@@ -598,6 +598,13 @@ export const collaboration: typeof en.collaboration = {
         // (`…_piloti`: Piloti für {actor}). `due_soon` / `overdue`: die tägliche
         // Erinnerung, ohne {actor}, in derselben Zeile der Anmerkung.
         variants: {
+          imported: {
+            title: '{actor} hat Ihnen Anmerkungen aus einer BCF-Datei zugewiesen',
+            titleRelated: '{actor} hat Ihnen Anmerkungen aus einer BCF-Datei in „{subject}“ zugewiesen',
+            titleRelatedMany: '{actor} hat Ihnen {count} Anmerkungen aus einer BCF-Datei in „{subject}“ zugewiesen',
+            titleRelatedNoSubject: '{actor} hat Ihnen Anmerkungen aus einer BCF-Datei zugewiesen',
+            body: 'Sie sind dafür zuständig. Die Liste am Modell zeigt alle; die Zeile öffnet die erste.',
+          },
           piloti: {
             title: '{productName} hat Ihnen für {actor} eine Anmerkung zugewiesen',
             titleRelated: '{productName} hat Ihnen für {actor} Anmerkung {related} in „{subject}“ zugewiesen',

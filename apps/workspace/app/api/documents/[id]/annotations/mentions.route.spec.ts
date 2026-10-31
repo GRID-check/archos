@@ -334,6 +334,9 @@ describe('a reply that mentions colleagues', () => {
             addressesAgent: false,
             mentions: [ANNA],
             editedAt: null,
+            importBatchId: null,
+            importedBy: null,
+            sourceDate: null,
           },
         ],
       })
@@ -519,6 +522,9 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
           addressesAgent: false,
           mentions: [BEN],
           editedAt: null,
+          importBatchId: null,
+          importedBy: null,
+          sourceDate: null,
         },
       ],
     })
@@ -552,6 +558,9 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
           addressesAgent: false,
           mentions: [ANNA, BEN],
           editedAt: null,
+          importBatchId: null,
+          importedBy: null,
+          sourceDate: null,
         },
       ],
     })

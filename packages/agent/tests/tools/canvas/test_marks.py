@@ -189,6 +189,21 @@ class TestWhatItSays:
 
         assert "on sketch elements stair, door" in result and "elements were deleted" in result
 
+    async def test_a_reply_from_a_bcf_file_says_so_and_who_imported_it(self, monkeypatch, calls) -> None:
+        reply = {
+            "authorKind": "person",
+            "body": "Kanal kann tiefer.",
+            "createdByName": "Max Huber",
+            "imported": {"byName": "Anna Berger", "originalDate": "2026-10-28T10:00:00.000Z"},
+        }
+        answering(monkeypatch, calls, {**LIST_BODY, "annotations": [listed(replies=[reply])]})
+
+        result = await run_marks()
+
+        assert (
+            "Max Huber (imported from a BCF file by Anna Berger, originally 2026-10-28): Kanal kann tiefer." in result
+        )
+
     async def test_a_mark_on_a_3d_model_view_has_no_page_and_comes_last(self, monkeypatch, calls) -> None:
         view = listed(
             id="v",

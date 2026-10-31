@@ -633,7 +633,6 @@ export const bim = {
       untitled: 'Untitled',
       unknownAuthor: 'Unknown',
       replyBy: '{author}:\n{text}',
-      replyByOn: '{author}, {date}:\n{text}',
       note: {
         origin: 'Taken from the BCF file “{file}”.',
         author: 'Originally by {author}.',
@@ -647,6 +646,7 @@ export const bim = {
         missing: '{count, plural, one {One selected element is} other {# selected elements are}} not in this model.',
         selection: '{count, plural, one {One selected element is} other {# selected elements are}} not taken: no IFC GlobalId, or more than 500.',
         planes: '{count, plural, one {One section plane is} other {# section planes are}} not taken.',
+        camera: 'The camera’s aspect ratio or field of view was outside what a view holds and is adjusted.',
         visibility: 'Too many elements were hidden or isolated; the view shows the whole model.',
         snapshot: {
           too_large: 'The picture of the view is larger than 1.5 MB and not taken.',

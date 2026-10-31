@@ -534,6 +534,9 @@ function fakeRepository() {
       addressesAgent: input.addressesAgent ?? false,
       mentions: input.mentions ?? [],
       editedAt: null,
+      importBatchId: null,
+      importedBy: null,
+      sourceDate: null,
     }
     if (current) marks.set(input.annotationId, { ...current, replies: [...current.replies, reply] })
     return reply

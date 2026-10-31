@@ -226,6 +226,9 @@ beforeEach(() => {
       addressesAgent: input.addressesAgent ?? false,
       mentions: input.mentions ?? [],
       editedAt: null,
+      importBatchId: null,
+      importedBy: null,
+      sourceDate: null,
     }
     await afterInsert?.(TX, row)
     return row

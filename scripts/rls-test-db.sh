@@ -2719,8 +2719,16 @@ refused_in bcf_import_0196 "INSERT INTO document_annotations (organization_id, d
 refused_in bcf_import_0196 "INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, source_topic_guid, import_batch_id) VALUES ('org_0196', 'd1d1d1d1-0000-4000-8000-000000000196', 3, 1, 'point', 0.5, 0.5, 'hint', 'x', 'person', 'open', 'user_1', 'c1c1c1c1-0000-4000-8000-000000000196', 'b1b1b1b1-0000-4000-8000-000000000196')" "document_annotations_import_is_viewpoint" "an imported mark sat on a page"
 refused_in bcf_import_0196 "UPDATE document_annotations SET import_batch_id = NULL WHERE number = 2" "document_annotations_import_complete" "an imported mark lost its batch"
 refused_in bcf_import_0196 "UPDATE document_annotations SET import_batch_id = 'b2b2b2b2-0000-4000-8000-000000000196' WHERE number = 1 AND document_id = 'd1d1d1d1-0000-4000-8000-000000000196'" "document_annotations_import_complete" "a batch without a topic"
+sql_in bcf_import_0196 <<'SQL'
+INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, import_batch_id, imported_by, source_date)
+SELECT 'org_0196', id, 'person', 'Bitte prüfen.', 'user_2', 'b0b0b0b0-0000-4000-8000-000000000196', 'user_1', '2026-10-20T08:00:00Z' FROM document_annotations WHERE number = 2;
+SQL
+check_in bcf_import_0196 "SELECT count(*) FROM document_annotation_replies WHERE imported_by = 'user_1' AND source_date IS NOT NULL" "1" "an imported reply keeps its importer and its own date"
+refused_in bcf_import_0196 "INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, import_batch_id) SELECT 'org_0196', id, 'person', 'x', 'user_2', 'b0b0b0b0-0000-4000-8000-000000000196' FROM document_annotations WHERE number = 2" "document_annotation_replies_import_complete" "an imported reply without its importer"
+refused_in bcf_import_0196 "INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by, source_date) SELECT 'org_0196', id, 'person', 'x', 'user_2', now() FROM document_annotations WHERE number = 2" "document_annotation_replies_import_complete" "a reply written here claiming an original date"
 apply_in bcf_import_0196 0196_annotation_bcf_import.down.sql
-check_in bcf_import_0196 "SELECT count(*) FROM information_schema.columns WHERE table_name = 'document_annotations' AND column_name IN ('source_topic_guid', 'import_batch_id')" "0" "down dropped both columns"
+check_in bcf_import_0196 "SELECT count(*) FROM information_schema.columns WHERE table_name IN ('document_annotations', 'document_annotation_replies') AND column_name IN ('source_topic_guid', 'import_batch_id', 'imported_by', 'source_date')" "0" "down dropped every column it added"
+check_in bcf_import_0196 "SELECT count(*) FROM document_annotation_replies" "1" "down kept the imported reply"
 check_in bcf_import_0196 "SELECT count(*) FROM document_annotations" "3" "down kept the imported marks"
 apply_in bcf_import_0196 0196_annotation_bcf_import.sql
 apply_in bcf_import_0196 0196_annotation_bcf_import.sql

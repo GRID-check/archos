@@ -1904,6 +1904,8 @@ export const files = {
     replyDeleteHint: 'People it mentioned no longer see the notice about it.',
     replyTakenUp: '{productName} has already taken this reply up. It stays as it is; write a new one.',
     edited: 'edited',
+    imported: 'via BCF import by {name}',
+    importedOn: 'via BCF import by {name} · originally {date}',
     assigneeYou: 'You',
     clearDue: 'Remove due date',
     decided: {

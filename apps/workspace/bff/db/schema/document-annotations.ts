@@ -269,6 +269,10 @@ export const documentAnnotationReplies = pgTable(
     mentions: jsonb('mentions').$type<MarkMention[]>().notNull().default([]),
     /** When its author last changed its text, by the database's clock; null for one never changed (migration 0152). */
     editedAt: timestamp('edited_at', { withTimezone: true }),
+    /** The BCF import that brought it in, who imported it, and the comment's own date (migration 0196); null for a reply written here. */
+    importBatchId: uuid('import_batch_id'),
+    importedBy: text('imported_by'),
+    sourceDate: timestamp('source_date', { withTimezone: true }),
   },
   (table) => ({
     annotationFk: foreignKey({
@@ -290,6 +294,10 @@ export const documentAnnotationReplies = pgTable(
     editedAfterCreated: check(
       'document_annotation_replies_edited_after_created',
       sql`${table.editedAt} IS NULL OR ${table.editedAt} >= ${table.createdAt}`
+    ),
+    importComplete: check(
+      'document_annotation_replies_import_complete',
+      sql`(${table.importBatchId} IS NULL) = (${table.importedBy} IS NULL) AND (${table.sourceDate} IS NULL OR ${table.importBatchId} IS NOT NULL)`
     ),
   })
 )

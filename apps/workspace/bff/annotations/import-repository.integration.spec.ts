@@ -9,7 +9,8 @@
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  *   - one topic is one mark with its viewpoint, its replies (by their own
- *     authors and dates) and the topic's guid and batch, in one transaction;
+ *     authors, each marked with the import, its importer and the comment's
+ *     own date) and the topic's guid and batch, in one transaction;
  *   - a topic closed in the file arrives closed by the importer;
  *   - the same topic on the same model is refused as a second mark, on another
  *     model it is a mark of its own;
@@ -96,8 +97,8 @@ describe.skipIf(!url)('imported marks against live Postgres', () => {
         sourceTopicGuid: guid,
         importBatchId: batch,
         replies: [
-          { body: 'Bitte prüfen.', createdBy: OTHER_USER, createdAt: new Date('2026-10-20T08:00:00Z') },
-          { body: 'Aus der BCF-Datei übernommen.', createdBy: USER, createdAt: new Date('2026-10-31T08:00:00Z') },
+          { body: 'Bitte prüfen.', createdBy: OTHER_USER, createdAt: new Date('2026-10-31T08:00:00.000Z'), sourceDate: new Date('2026-10-20T08:00:00Z') },
+          { body: 'Aus der BCF-Datei übernommen.', createdBy: USER, createdAt: new Date('2026-10-31T08:00:00.001Z'), sourceDate: null },
         ],
       })
     )
@@ -136,7 +137,13 @@ describe.skipIf(!url)('imported marks against live Postgres', () => {
       [OTHER_USER, 'Bitte prüfen.'],
       [USER, 'Aus der BCF-Datei übernommen.'],
     ])
-    expect(record?.replies[0].createdAt.toISOString()).toBe('2026-10-20T08:00:00.000Z')
+    // A colleague's comment from the file is theirs, and says it came in by this import.
+    expect(record?.replies.map((reply) => [reply.importBatchId, reply.importedBy])).toEqual([
+      [batch, USER],
+      [batch, USER],
+    ])
+    expect(record?.replies[0].createdAt.toISOString()).toBe('2026-10-31T08:00:00.000Z')
+    expect(record?.replies[0].sourceDate?.toISOString()).toBe('2026-10-20T08:00:00.000Z')
   })
 
   it('brings a topic closed in the file in closed, by the importer', async () => {
@@ -181,5 +188,11 @@ describe.skipIf(!url)('imported marks against live Postgres', () => {
       inOrg(() => db.execute(sql`update document_annotations set import_batch_id = null where id = ${row.id}::uuid`))
     )
     expect(unbatched).toMatch(/document_annotations_import_complete/)
+    const record = await inOrg(() => repo.findDocumentAnnotation(ORG, ids.other, row.id))
+    const replyId = record?.replies[0].id ?? ''
+    const anonymous = await refusal(() =>
+      inOrg(() => db.execute(sql`update document_annotation_replies set imported_by = null where id = ${replyId}::uuid`))
+    )
+    expect(anonymous).toMatch(/document_annotation_replies_import_complete/)
   })
 })

@@ -172,6 +172,10 @@ def _reply_lines(replies: list[Any]) -> list[str]:
     lines = [f"  Replies ({len(usable)}{', the last ' + str(len(shown)) if len(shown) < len(usable) else ''}):"]
     for reply in shown:
         who = "Piloti" if reply.get("authorKind") == "piloti" else _text(reply.get("createdByName")) or "person"
+        if isinstance(imported := reply.get("imported"), dict):
+            original = _text(imported.get("originalDate"))[:10]
+            who += f" (imported from a BCF file by {_text(imported.get('byName')) or 'a person'}"
+            who += f", originally {original})" if original else ")"
         lines.append(f"    - {who}: {_clipped(reply.get('body'), MAX_LISTED_REPLY)}")
     return lines
 

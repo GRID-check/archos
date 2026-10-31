@@ -27,7 +27,19 @@
 -- without a viewpoint is not imported (yet: a later step frames it from the
 -- elements' stored boxes), so there is no imported page mark to allow.
 --
--- No new table, so no new policy: `document_annotations` keeps its own.
+-- ## A reply brought in by an import
+--
+-- A comment whose author's email is a colleague becomes a reply BY that
+-- colleague: the thread names who said it. So that it is never mistaken for
+-- something they wrote here, the reply keeps where it came from:
+-- `import_batch_id` (the import), `imported_by` (who imported it) and
+-- `source_date` (the comment's own date in the file, when it had one). Its
+-- `created_at` is the import's time, so the thread's order and every „new
+-- since“ reading stay true to when it arrived here; the original date is
+-- shown beside it. `…_import_complete` on the reply: batch and importer both
+-- or neither, and an original date only on an imported reply.
+--
+-- No new table, so no new policy: both tables keep their own.
 
 ALTER TABLE "document_annotations" ADD COLUMN IF NOT EXISTS "source_topic_guid" uuid;
 --> statement-breakpoint
@@ -48,3 +60,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS "uniq_document_annotations_source_topic"
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_document_annotations_import_batch"
   ON "document_annotations" ("import_batch_id") WHERE "import_batch_id" IS NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "document_annotation_replies" ADD COLUMN IF NOT EXISTS "import_batch_id" uuid;
+--> statement-breakpoint
+ALTER TABLE "document_annotation_replies" ADD COLUMN IF NOT EXISTS "imported_by" text;
+--> statement-breakpoint
+ALTER TABLE "document_annotation_replies" ADD COLUMN IF NOT EXISTS "source_date" timestamp with time zone;
+--> statement-breakpoint
+ALTER TABLE "document_annotation_replies" DROP CONSTRAINT IF EXISTS "document_annotation_replies_import_complete";
+--> statement-breakpoint
+ALTER TABLE "document_annotation_replies" ADD CONSTRAINT "document_annotation_replies_import_complete"
+  CHECK (("import_batch_id" IS NULL) = ("imported_by" IS NULL) AND ("source_date" IS NULL OR "import_batch_id" IS NOT NULL));

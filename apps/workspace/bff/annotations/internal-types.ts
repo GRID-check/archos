@@ -14,6 +14,7 @@ import {
   annotationProposalSchema,
   content,
   MAX_PROPOSALS_PER_CALL,
+  type AnnotationReplyView,
 } from './types'
 import { ANNOTATION_SHAPES } from './place'
 import { viewpointSummarySchema } from './viewpoint-types'
@@ -161,10 +162,20 @@ export const internalAnnotationSchema = z.object({
       authorKind: z.enum(ANNOTATION_AUTHORS),
       body: z.string(),
       createdByName: z.string().nullable(),
+      /** From a BCF file (migration 0196): who imported it and the comment's own date. A colleague's comment there is not something they wrote here. */
+      imported: z.object({ byName: z.string().nullable(), originalDate: z.string().nullable() }).nullable().optional(),
     })
   ),
 })
 export type InternalAnnotation = z.infer<typeof internalAnnotationSchema>
+
+/** A reply as Piloti reads it: who, what, and whether it came from a BCF file. */
+export const internalReplyOf = (reply: AnnotationReplyView): InternalAnnotation['replies'][number] => ({
+  authorKind: reply.authorKind,
+  body: reply.body,
+  createdByName: reply.createdByName,
+  imported: reply.imported ? { byName: reply.imported.byName, originalDate: reply.imported.originalDate } : null,
+})
 
 export const internalAnnotationListResponseSchema = z.object({
   documentId: z.string(),

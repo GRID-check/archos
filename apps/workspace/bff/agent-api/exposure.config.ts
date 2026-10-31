@@ -1,5 +1,6 @@
 /**
- * Who sees each capability (ADR-0122, amendment of 2026-10-21): the one file that decides it.
+ * Who sees each capability (ADR-0122, amendment of 2026-10-21): the one file
+ * that decides it.
  *
  * One entry per operation, the catalog's (`catalog/`) and the agent's read
  * tools (`backend-operations.ts`). Three audiences, one column each:
@@ -268,7 +269,6 @@ export const EXPOSURE = {
   'root-sort-run-cancel': OFFERED,
   'root-sort-run-get': OFFERED,
   'root-sort-run-undo': OFFERED,
-
   // review
   'annotation-create': { external: true, piloti: 'native:canvas__mark', reason: CANVAS },
   'annotation-delete': { external: true, piloti: 'native:canvas__delete', reason: CANVAS },

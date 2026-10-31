@@ -1882,6 +1882,8 @@ export const files: typeof en.files = {
     replyTakenUp: '{productName} hat diese Antwort schon aufgenommen. Sie bleibt, wie sie ist; schreiben Sie eine neue.',
     // Neben der Zeit einer Antwort, die ihre Verfasserin geändert hat.
     edited: 'bearbeitet',
+    imported: 'über BCF-Import von {name}',
+    importedOn: 'über BCF-Import von {name} · im Original vom {date}',
     // Die Zuständige ist die lesende Person selbst, solange ihr Name noch nicht da ist.
     assigneeYou: 'Sie',
     clearDue: 'Frist entfernen',

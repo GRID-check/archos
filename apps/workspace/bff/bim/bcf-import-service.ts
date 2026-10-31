@@ -32,10 +32,23 @@
  * runs over. A topic without a viewpoint is skipped and reported; a later step
  * frames it from the elements' stored boxes (F4's `frameViewpoint`).
  *
- * What a person learns: the document's people one counted row
- * (`onMarksSet`), each new Zuständige theirs (`onAssigneeChanged`), the room a
- * re-read; an audit event (`document.annotations.imported`) and a product
- * event (`annotations_imported`) with counts, never a word of a topic.
+ * What a person learns, once, after the topics are written: each Zuständige
+ * ONE counted row for all their marks of this import
+ * (`../annotations/import-attention.ts`), the document's people one counted
+ * row (`onMarksSet`), the room a re-read; an audit event
+ * (`document.annotations.imported`) and a product event
+ * (`annotations_imported`) with counts, never a word of a topic. These run in
+ * a `finally`, so an import that stops part-way still says what it wrote.
+ *
+ * ## How much one request carries
+ *
+ * Each topic is a few round trips (its elements, one picture to the object
+ * store, one transaction): some tens of milliseconds, so a full document of
+ * 500 topics is in the order of half a minute. The file is bounded before any
+ * of it (64 MiB, `./bcf-archive.ts`), and nothing is lost when a request is cut
+ * short: the topics written are marks already, and importing the same file
+ * again skips them and goes on with the rest. A job on the BFF queue is the
+ * next step if rounds outgrow one request.
  */
 
 import 'server-only'
@@ -52,7 +65,8 @@ import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { memberReader } from '@/lib/documents/visibility'
 import { OFFICE_TIME_ZONE } from '@/lib/format'
-import { onAssigneeChanged, onMarksSet } from '@/lib/annotations/attention'
+import { onMarksSet } from '@/lib/annotations/attention'
+import { onMarksAssignedByImport } from '@/lib/annotations/import-attention'
 import { importedTopicGuids, insertImportedMark, TopicImportedTwiceError, type ImportedReply } from '@/lib/annotations/import-repository'
 import { AnnotationLimitReachedError } from '@/lib/annotations/numbering'
 import { MAX_ANNOTATION_BODY, MAX_REPLIES_PER_ANNOTATION } from '@/lib/annotations/types'
@@ -61,7 +75,7 @@ import { findMissingElements } from '@/lib/annotations/viewpoint-repository'
 import { discardSnapshot, putSnapshot, snapshotUploadOf, type SnapshotUpload } from '@/lib/annotations/viewpoint-snapshot'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { BcfArchiveError, readBcfArchive } from './bcf-archive'
+import { BcfArchiveError, openBcfArchive, type BcfArchive } from './bcf-archive'
 import { bodyOf, clip, dueOnOf, kindOf, reportTitle, statusOf, topicKey, type ImportNote } from './bcf-import-map'
 import type { BcfImportResult } from './bcf-import-wire'
 import { isReadableVersion, readBcf, type BcfTopicRead } from './bcf-read'
@@ -140,6 +154,7 @@ function viewNotes(topic: BcfTopicRead, missing: number): ImportNote[] {
   if (cuts.selection > 0) notes.push({ key: 'selection', values: { count: cuts.selection } })
   if (cuts.planes > 0) notes.push({ key: 'planes', values: { count: cuts.planes } })
   if (cuts.visibility) notes.push({ key: 'visibility' })
+  if (cuts.camera) notes.push({ key: 'camera' })
   if (cuts.snapshot) notes.push({ key: `snapshot.${cuts.snapshot}` })
   return notes
 }
@@ -149,25 +164,22 @@ function repliesOf(topic: BcfTopicRead, context: Context, notes: ImportNote[]): 
   const room = MAX_REPLIES_PER_ANNOTATION - 1
   const comments = topic.comments.slice(0, room)
   if (topic.comments.length > room) notes.push({ key: 'repliesCut', values: { count: topic.comments.length - room } })
+  // Each arrives now, a millisecond apart so the file's order holds; its own date is kept beside it (`sourceDate`).
   const replies = comments.map((comment, index): ImportedReply => {
     const author = context.people.readers.get(emailKey(comment.author))
-    const when = comment.date && comment.date.getTime() <= context.now ? comment.date : new Date(context.now + index)
-    const said = clip(comment.text, MAX_ANNOTATION_BODY)
-    if (author) return { body: said.text, createdBy: author, createdAt: when }
+    const arrived = { createdAt: new Date(context.now + index), sourceDate: comment.date }
+    if (author) return { body: clip(comment.text, MAX_ANNOTATION_BODY).text, createdBy: author, ...arrived }
     const name = comment.author ?? context.t('marks.import.unknownAuthor')
-    const text = comment.date
-      ? context.t('marks.import.replyByOn', { author: name, date: context.date(comment.date), text: comment.text })
-      : context.t('marks.import.replyBy', { author: name, text: comment.text })
-    return { body: clip(text, MAX_ANNOTATION_BODY).text, createdBy: context.session.userId, createdAt: when }
+    const text = context.t('marks.import.replyBy', { author: name, text: comment.text })
+    return { body: clip(text, MAX_ANNOTATION_BODY).text, createdBy: context.session.userId, ...arrived }
   })
   const note = clip(notes.map((line) => say(context.t, line)).join('\n'), MAX_ANNOTATION_BODY).text
-  replies.push({ body: note, createdBy: context.session.userId, createdAt: new Date(context.now + comments.length + 1) })
+  replies.push({ body: note, createdBy: context.session.userId, createdAt: new Date(context.now + comments.length), sourceDate: null })
   return replies
 }
 
-type Outcome =
-  | { kind: 'imported'; entry: BcfImportResult['imported'][number]; body: string; assignee: string | null; dueOn: string | null; open: boolean }
-  | { kind: 'failed'; entry: BcfImportResult['failed'][number] }
+type Imported = { kind: 'imported'; entry: BcfImportResult['imported'][number]; body: string; assignee: string | null; open: boolean }
+type Outcome = Imported | { kind: 'failed'; entry: BcfImportResult['failed'][number] }
 
 /** One topic with a view, written as a mark; its snapshot first, deleted again when the mark is not written. */
 async function importTopic(topic: BcfTopicRead & { view: NonNullable<BcfTopicRead['view']> }, key: string, context: Context): Promise<Outcome> {
@@ -207,7 +219,6 @@ async function importTopic(topic: BcfTopicRead & { view: NonNullable<BcfTopicRea
       entry: { topic: topic.guid, annotationId: row.id, number: row.number, assigned: assignee !== null },
       body: row.body,
       assignee,
-      dueOn,
       open: status === 'open',
     }
   } catch (error) {
@@ -218,16 +229,18 @@ async function importTopic(topic: BcfTopicRead & { view: NonNullable<BcfTopicRea
 
 /** The file's bytes as topics, or the 422 that refuses the whole file. */
 function readFile(upload: BcfUpload) {
-  let files: Map<string, Uint8Array>
+  let files: BcfArchive
+  let read: ReturnType<typeof readBcf>
   try {
-    files = readBcfArchive(upload.bytes)
+    files = openBcfArchive(upload.bytes)
+    // Everything the topics name is inflated here, before anything is written: a member that breaks a bound refuses the file whole.
+    read = readBcf(files)
   } catch (error) {
     if (error instanceof BcfArchiveError) {
       throw new UnprocessableError('This BCF file cannot be read safely.', { reason: error.reason })
     }
     throw error
   }
-  const read = readBcf(files)
   if (!isReadableVersion(read.version)) {
     throw new UnprocessableError(`BCF ${read.version} is not read; 2.1 and 3.0 are.`, { reason: 'unsupported_version' })
   }
@@ -248,34 +261,31 @@ async function requireModel(session: AuthorizedSession, documentId: string): Pro
   return { doc, modelId: model.id, checkElements: model.summary?.truncatedAt == null }
 }
 
-/** Tell people once everything is written: a row per new Zuständige, one counted row for the document, the room. */
-function tell(context: Context, created: Extract<Outcome, { kind: 'imported' }>[]): void {
+/**
+ * Tell people once everything is written, one after the other and never
+ * failing the import: each Zuständige one counted row for all their marks of
+ * this import (`onMarksAssignedByImport`), the document's people one counted
+ * row (`onMarksSet`), the room one re-read.
+ */
+async function tell(context: Context, created: readonly Imported[]): Promise<void> {
   const { session, doc } = context
   if (created.length === 0) return
   const ref = { organizationId: session.organizationId, documentId: doc.id, projectId: doc.projectId ?? null }
-  const mayOpen = (userIds: readonly string[]) => mayOpenDocument(session, doc, userIds)
-  const quietly = (label: string, work: Promise<unknown>) =>
-    void work.catch((error: unknown) => console.warn(`[bcf-import] could not ${label}:`, error))
-  for (const mark of created) {
-    if (!mark.assignee) continue
-    quietly(
-      'tell the Zuständige',
-      onAssigneeChanged({
-        ...ref,
-        annotationId: mark.entry.annotationId,
-        annotationNumber: mark.entry.number,
-        actorUserId: session.userId,
-        byAgent: false,
-        markText: mark.body,
-        previousAssigneeUserId: null,
-        assigneeUserId: mark.assignee,
-        open: mark.open,
-        dueOn: mark.dueOn,
-      })
-    )
-  }
-  quietly(
-    'tell the document’s people',
+  const quietly = (label: string, work: () => Promise<unknown>) =>
+    work().catch((error: unknown) => console.warn(`[bcf-import] could not ${label}:`, error))
+  await quietly('tell the Zuständige', () =>
+    onMarksAssignedByImport({
+      ...ref,
+      actorUserId: session.userId,
+      batchId: context.batchId,
+      marks: created.flatMap((mark) =>
+        mark.assignee && mark.open
+          ? [{ annotationId: mark.entry.annotationId, number: mark.entry.number, body: mark.body, assigneeUserId: mark.assignee }]
+          : []
+      ),
+    })
+  )
+  await quietly('tell the document’s people', () =>
     onMarksSet({
       ...ref,
       actorUserId: session.userId,
@@ -284,11 +294,10 @@ function tell(context: Context, created: Extract<Outcome, { kind: 'imported' }>[
       marks: created
         .filter((mark) => mark.open)
         .map((mark) => ({ id: mark.entry.annotationId, number: mark.entry.number, body: mark.body, toldOtherwise: [mark.assignee] })),
-      mayOpen,
+      mayOpen: (userIds) => mayOpenDocument(session, doc, userIds),
     })
   )
-  quietly(
-    'tell the room',
+  await quietly('tell the room', () =>
     publishToDocumentRoom(doc.id, {
       kind: 'annotations.changed',
       annotationIds: created.map((mark) => mark.entry.annotationId),
@@ -338,38 +347,41 @@ export async function importAnnotationsBcf(
     skipped: [],
     failed: read.unread.map((entry) => ({ topic: entry.folder, title: null, reason: entry.reason })),
   }
-  const created: Extract<Outcome, { kind: 'imported' }>[] = []
+  const created: Imported[] = []
   const seen = new Set<string>()
   let full = false
-  for (const topic of read.topics) {
-    const key = topicKey(topic.guid)
-    const ref = { topic: topic.guid, title: reportTitle(topic.title) }
-    if (seen.has(key)) result.skipped.push({ ...ref, reason: 'duplicate_in_file' })
-    else if (existing.has(key)) result.skipped.push({ ...ref, reason: 'already_imported' })
-    else if (!topic.view) result.skipped.push({ ...ref, reason: 'no_viewpoint' })
-    else if (full) result.failed.push({ ...ref, reason: 'limit' })
-    else {
-      const outcome = await importTopic({ ...topic, view: topic.view }, key, context).catch((error: unknown): Outcome | 'twice' => {
-        if (error instanceof TopicImportedTwiceError) return 'twice'
-        if (error instanceof AnnotationLimitReachedError) {
-          full = true
-          return { kind: 'failed', entry: { ...ref, reason: 'limit' } }
-        }
-        console.error(`[bcf-import] topic ${key} on document ${doc.id} failed:`, error)
-        return { kind: 'failed', entry: { ...ref, reason: 'error' } }
-      })
-      if (outcome === 'twice') result.skipped.push({ ...ref, reason: 'already_imported' })
-      else if (outcome.kind === 'failed') result.failed.push(outcome.entry)
+  try {
+    for (const topic of read.topics) {
+      const key = topicKey(topic.guid)
+      const ref = { topic: topic.guid, title: reportTitle(topic.title) }
+      if (seen.has(key)) result.skipped.push({ ...ref, reason: 'duplicate_in_file' })
+      else if (existing.has(key)) result.skipped.push({ ...ref, reason: 'already_imported' })
+      else if (!topic.view) result.skipped.push({ ...ref, reason: 'no_viewpoint' })
+      else if (full) result.failed.push({ ...ref, reason: 'limit' })
       else {
-        created.push(outcome)
-        result.imported.push(outcome.entry)
+        const outcome = await importTopic({ ...topic, view: topic.view }, key, context).catch((error: unknown): Outcome | 'twice' => {
+          if (error instanceof TopicImportedTwiceError) return 'twice'
+          if (error instanceof AnnotationLimitReachedError) {
+            full = true
+            return { kind: 'failed', entry: { ...ref, reason: 'limit' } }
+          }
+          console.error(`[bcf-import] topic ${key} on document ${doc.id} failed:`, error)
+          return { kind: 'failed', entry: { ...ref, reason: 'error' } }
+        })
+        if (outcome === 'twice') result.skipped.push({ ...ref, reason: 'already_imported' })
+        else if (outcome.kind === 'failed') result.failed.push(outcome.entry)
+        else {
+          created.push(outcome)
+          result.imported.push(outcome.entry)
+        }
       }
+      seen.add(key)
     }
-    seen.add(key)
+  } finally {
+    // Also when a topic throws past its own catch or the request is cut short: what was written is told and recorded.
+    await tell(context, created)
+    await record(context, result, request)
   }
-
-  tell(context, created)
-  await record(context, result, request)
   return result
 }
 

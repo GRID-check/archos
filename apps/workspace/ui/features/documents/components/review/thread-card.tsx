@@ -61,6 +61,7 @@ import { AssignPopover } from '../assign-popover'
 import { Composer, type ComposerSend } from './composer'
 import { otherReviewHref } from '../../lib/revision-links'
 import { MarkBody } from './mark-body'
+import { ReplyProvenance } from './reply-provenance'
 import { useAgentByline } from './agent-attribution'
 import type { CardSide } from './review-page-layer'
 import { useFocusBackOnClose } from './focus-return'
@@ -837,6 +838,7 @@ function ReplyEntry({
           ) : null
         }
       />
+      <ReplyProvenance imported={reply.imported} />
       {failed && <FieldError className="mt-1 ml-8.5">{failed}</FieldError>}
       <ConfirmDialog
         open={confirmDelete}
@@ -947,7 +949,6 @@ export function ThreadCard({
   // move gets a 409 and the fresh list, never an act on a state it did not see.
   const move = (status: 'open' | 'resolved' | 'dismissed') =>
     act(() => review.update(annotation.id, { status, expectedStatus: annotation.status }))
-
   // Only the person who wrote it rewords a mark: Piloti's text stays Piloti's, a colleague's theirs.
   const mayReword = annotation.canEdit && annotation.authorKind === 'person' && annotation.createdBy === review.me
   // The mark's own rewording, saved or let go: the focus back to the card's ⋯ it was opened from.

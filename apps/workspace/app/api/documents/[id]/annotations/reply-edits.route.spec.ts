@@ -157,6 +157,9 @@ const replyRow = (patch: Partial<DocumentAnnotationReplyRow> = {}): DocumentAnno
   addressesAgent: false,
   mentions: [ANNA],
   editedAt: null,
+  importBatchId: null,
+  importedBy: null,
+  sourceDate: null,
   ...patch,
 })
 

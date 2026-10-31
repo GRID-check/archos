@@ -28,7 +28,8 @@ vi.mock('@/lib/annotations/viewpoint-snapshot', () => ({
   discardSnapshot: vi.fn().mockResolvedValue(undefined),
   snapshotUploadOf: vi.fn((_doc: unknown, id: string, contentType: string, body: Buffer) => ({ bucket: 'b', key: `k/${id}`, contentType, body })),
 }))
-vi.mock('@/lib/annotations/attention', () => ({ onAssigneeChanged: vi.fn().mockResolvedValue(undefined), onMarksSet: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/annotations/attention', () => ({ onMarksSet: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/annotations/import-attention', () => ({ onMarksAssignedByImport: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
@@ -43,7 +44,8 @@ vi.mock('@/i18n/server', async () => {
 import { strToU8, zipSync } from 'fflate'
 import type { Namespace } from '@/i18n/namespace'
 import { captureServer } from '@/lib/analytics/posthog-server'
-import { onAssigneeChanged } from '@/lib/annotations/attention'
+import { onMarksAssignedByImport } from '@/lib/annotations/import-attention'
+import { discardSnapshot } from '@/lib/annotations/viewpoint-snapshot'
 import { importedTopicGuids, insertImportedMark, type ImportedMarkInput } from '@/lib/annotations/import-repository'
 import { AnnotationLimitReachedError } from '@/lib/annotations/numbering'
 import { findMissingElements } from '@/lib/annotations/viewpoint-repository'
@@ -187,9 +189,11 @@ describe('our own BCF 3.0 export, imported into a fresh model', () => {
   it('keeps each comment by its author where the email is someone here, else names them in the text', async () => {
     await upload(ownExport(source))
     const [first, second, note] = written[0].replies
-    expect(first).toEqual({ body: 'Ergänzt in Rev. 4.', createdBy: 'user_max', createdAt: new Date('2026-10-29T09:00:00Z') })
+    expect(first).toMatchObject({ body: 'Ergänzt in Rev. 4.', createdBy: 'user_max', sourceDate: new Date('2026-10-29T09:00:00Z') })
     expect(second.createdBy).toBe('user_anna')
-    expect(second.body).toMatch(/^statik@extern\.test, .*:\nBitte prüfen\.$/)
+    expect(second.body).toBe('statik@extern.test:\nBitte prüfen.')
+    expect(second.sourceDate).toEqual(new Date('2026-10-29T10:00:00Z'))
+    expect(note.sourceDate).toBeNull()
     expect(note.body).toContain('Aus der BCF-Datei „Runde 3.bcf“ übernommen.')
     expect(note.body).toContain('Ursprünglich von anna@buero.test')
   })
@@ -202,13 +206,57 @@ describe('our own BCF 3.0 export, imported into a fresh model', () => {
 
   it('tells the new Zuständige and records the import with counts only', async () => {
     const result = await upload(ownExport(source))
-    expect(onAssigneeChanged).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(onAssigneeChanged).mock.calls[0][0]).toMatchObject({ assigneeUserId: 'user_max', open: true })
+    expect(onMarksAssignedByImport).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(onMarksAssignedByImport).mock.calls[0][0]).toMatchObject({
+      batchId: result.batchId,
+      actorUserId: 'user_anna',
+      marks: [{ annotationId: 'mark_1', number: 1, assigneeUserId: 'user_max' }],
+    })
     expect(vi.mocked(recordAuditEvent).mock.calls[0][0]).toMatchObject({
       action: 'document.annotations.imported',
       metadata: { format: 'bcf', version: '3.0', batchId: result.batchId, topicCount: 3, importedCount: 3, assignedCount: 1 },
     })
     expect(vi.mocked(captureServer).mock.calls[0][0]).toMatchObject({ event: 'annotations_imported', properties: { imported: 3, topics: 3 } })
+  })
+
+  it('dates every reply by its arrival, in the file’s order, and keeps the comment’s own date beside it', async () => {
+    const before = Date.now()
+    await upload(ownExport(source))
+    const arrivals = written[0].replies.map((reply) => reply.createdAt.getTime())
+    expect(arrivals[0]).toBeGreaterThanOrEqual(before)
+    expect([...arrivals].sort((a, b) => a - b)).toEqual(arrivals)
+    expect(new Set(arrivals).size).toBe(arrivals.length)
+  })
+
+  it('counts a topic a parallel import wrote first as already there, and takes its picture back', async () => {
+    const { TopicImportedTwiceError } = await import('@/lib/annotations/import-repository')
+    vi.mocked(insertImportedMark).mockRejectedValueOnce(new TopicImportedTwiceError())
+    const result = await upload(ownExport([source[0]]))
+    expect(result.skipped).toEqual([{ topic: source[0].id, title: 'Auflager fehlt', reason: 'already_imported' }])
+    expect(discardSnapshot).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails a topic whose write fails, takes its picture back, and goes on with the rest', async () => {
+    vi.mocked(insertImportedMark).mockRejectedValueOnce(new Error('connection reset'))
+    const result = await upload(ownExport(source))
+    expect(result.failed).toEqual([{ topic: source[0].id, title: 'Auflager fehlt', reason: 'error' }])
+    expect(result.imported).toHaveLength(2)
+    expect(discardSnapshot).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(recordAuditEvent).mock.calls[0][0]).toMatchObject({ metadata: { importedCount: 2, failedCount: 1 } })
+  })
+
+  it('still records and tells what it wrote when the loop is cut short', async () => {
+    let asked = 0
+    const breaking = new Set<string>()
+    breaking.has = () => {
+      asked += 1
+      if (asked > 1) throw new TypeError('a bug past the topic’s own catch')
+      return false
+    }
+    vi.mocked(importedTopicGuids).mockResolvedValueOnce(breaking)
+    await expect(upload(ownExport(source))).rejects.toThrow(TypeError)
+    expect(vi.mocked(recordAuditEvent).mock.calls[0][0]).toMatchObject({ metadata: { importedCount: 1 } })
+    expect(onMarksAssignedByImport).toHaveBeenCalledTimes(1)
   })
 
   it('skips every topic on a second import of the same file, and says so', async () => {

@@ -29,5 +29,8 @@ export function toReplyView(
     wokenBy: wakeOfReply(reply, wakes),
     mentions: reply.mentions,
     editedAt: reply.editedAt ? reply.editedAt.toISOString() : null,
+    imported: reply.importedBy
+      ? { byUserId: reply.importedBy, byName: nameOf(names, reply.importedBy), originalDate: reply.sourceDate?.toISOString() ?? null }
+      : null,
   }
 }

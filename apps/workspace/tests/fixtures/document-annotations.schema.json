@@ -1525,6 +1525,34 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "imported": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "byName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "originalDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "byName",
+                            "originalDate"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [

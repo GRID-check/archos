@@ -134,7 +134,7 @@ import {
   type TakeBackAudit,
 } from './take-back'
 import { annotationBox, annotationProposalSchema, compareAnnotations, createAnnotationRequestSchema, createReplyRequestSchema, MAX_ANNOTATIONS_PER_DOCUMENT, MAX_PROPOSALS_PER_CALL, MAX_REPLIES_PER_ANNOTATION, agentRepliedSince, REPLY_MARK_CLOSED_REASON, REPLY_TAKEN_UP_REASON, replyIsForAgent, isLive, updateAnnotationRequestSchema, updateReplyRequestSchema, type AnnotationAuthor, type AnnotationDeleteRefusal, type AnnotationListResponse, type AnnotationProposal, type AnnotationStatus, type AnnotationView, type CarryLinkView, type CarryTargetView, type CreateAnnotationRequest, type CreateReplyRequest, type MarkMention, type AgentWakeTrigger, type UpdateAnnotationRequest, type UpdateReplyRequest, type WakeOutcome } from './types'
-import { type InternalAnnotation } from './internal-types'
+import { internalReplyOf, type InternalAnnotation } from './internal-types'
 
 /** Who acts: a person in their own session, or Piloti in the asker's. `peerId` is the person's tab, when it says. */
 export interface AnnotationActor {
@@ -1587,11 +1587,7 @@ export async function listAnnotationsForAgent(
       onCurrentRevision: annotation.onCurrentRevision,
       createdByName: annotation.createdByName,
       createdAt: annotation.createdAt,
-      replies: annotation.replies.map((reply) => ({
-        authorKind: reply.authorKind,
-        body: reply.body,
-        createdByName: reply.createdByName,
-      })),
+      replies: annotation.replies.map(internalReplyOf),
     })),
   }
 }

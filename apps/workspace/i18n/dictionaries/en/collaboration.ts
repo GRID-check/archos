@@ -752,6 +752,13 @@ export const collaboration = {
         // {actor}). `due_soon` / `overdue`: the daily reminder, without {actor},
         // in the annotation's same row.
         variants: {
+          imported: {
+            title: '{actor} assigned you annotations from a BCF file',
+            titleRelated: '{actor} assigned you annotations from a BCF file in “{subject}”',
+            titleRelatedMany: '{actor} assigned you {count} annotations from a BCF file in “{subject}”',
+            titleRelatedNoSubject: '{actor} assigned you annotations from a BCF file',
+            body: 'You are responsible for them. The model’s list shows all of them; this row opens the first.',
+          },
           piloti: {
             title: '{productName} assigned you an annotation for {actor}',
             titleRelated: '{productName} assigned you annotation {related} in “{subject}” for {actor}',

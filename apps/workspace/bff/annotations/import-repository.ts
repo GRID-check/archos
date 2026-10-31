@@ -44,7 +44,10 @@ export interface ImportedReply {
   body: string
   /** Its author when the file's author is someone of this office who may open the document, else the importer. */
   createdBy: string
+  /** When it arrived here: the import's time, in thread order. */
   createdAt: Date
+  /** The comment's own date in the file, or null (the import's note, or a comment without one). */
+  sourceDate: Date | null
 }
 
 export interface ImportedMarkInput {
@@ -65,8 +68,10 @@ export interface ImportedMarkInput {
  * which refuses past the document's cap with `AnnotationLimitReachedError`),
  * the viewpoint, the mark and its replies, all or nothing. A person's mark: a
  * topic closed in the file arrives closed by the importer, now
- * (`…_closing_complete`). A second mark for the same topic on the same
- * document is a {@link TopicImportedTwiceError}.
+ * (`…_closing_complete`). Every reply carries the batch and the importer
+ * (`document_annotation_replies_import_complete`), so a colleague's comment
+ * from the file never reads as written here. A second mark for the same topic
+ * on the same document is a {@link TopicImportedTwiceError}.
  */
 export async function insertImportedMark(input: ImportedMarkInput): Promise<DocumentAnnotationRow> {
   const { organizationId, documentId, versionId, createdBy } = input
@@ -109,6 +114,9 @@ export async function insertImportedMark(input: ImportedMarkInput): Promise<Docu
             body: reply.body,
             createdBy: reply.createdBy,
             createdAt: reply.createdAt,
+            sourceDate: reply.sourceDate,
+            importBatchId: input.importBatchId,
+            importedBy: createdBy,
           }))
         )
       }

@@ -93,7 +93,7 @@ const QUOTE_KEYS = ['excerpt', 'mentions'] as const
 /** Longest question quoted in a row. */
 const EXCERPT_LENGTH = 160
 
-function excerptOf(text: string | null | undefined): string | null {
+export function excerptOf(text: string | null | undefined): string | null {
   const trimmed = text?.replace(/\s+/g, ' ').trim()
   if (!trimmed) return null
   return trimmed.length > EXCERPT_LENGTH ? `${trimmed.slice(0, EXCERPT_LENGTH - 1)}…` : trimmed
@@ -142,7 +142,7 @@ interface MarkItem {
 }
 
 /** One item about a mark, addressed to each of these people. */
-async function emitAboutMark(
+export async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserIds: readonly string[],

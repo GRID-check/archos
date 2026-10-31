@@ -550,7 +550,6 @@ export const bim: typeof en.bim = {
       untitled: 'Ohne Titel',
       unknownAuthor: 'Unbekannt',
       replyBy: '{author}:\n{text}',
-      replyByOn: '{author}, {date}:\n{text}',
       note: {
         origin: 'Aus der BCF-Datei „{file}“ übernommen.',
         author: 'Ursprünglich von {author}.',
@@ -564,6 +563,7 @@ export const bim: typeof en.bim = {
         missing: '{count, plural, one {Ein ausgewähltes Bauteil ist} other {# ausgewählte Bauteile sind}} nicht in diesem Modell.',
         selection: '{count, plural, one {Ein ausgewähltes Bauteil ist} other {# ausgewählte Bauteile sind}} nicht übernommen: ohne IFC-GlobalId, oder mehr als 500.',
         planes: '{count, plural, one {Eine Schnittebene ist} other {# Schnittebenen sind}} nicht übernommen.',
+        camera: 'Seitenverhältnis oder Blickwinkel der Kamera lagen außerhalb dessen, was eine Ansicht hält, und sind angepasst.',
         visibility: 'Es waren zu viele Bauteile ein- oder ausgeblendet; die Ansicht zeigt das ganze Modell.',
         snapshot: {
           too_large: 'Das Bild der Ansicht ist größer als 1,5 MB und nicht übernommen.',
