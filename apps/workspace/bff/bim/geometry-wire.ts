@@ -29,8 +29,9 @@ export const GEOMETRY_LIMITS = {
 
 const L = GEOMETRY_LIMITS
 
-// An IFC GlobalId is 22 characters; the service checks its alphabet. Kept short: every schema byte is paid per tool list.
-const globalId = z.string().length(22)
+// An IFC GlobalId (22 characters of its own alphabet) is checked by the service, which answers a
+// malformed one with a 400 naming it. Not restated here: every schema byte is paid per tool list.
+const globalId = z.string()
 const globalIds = (max: number) => z.array(globalId).min(1).max(max)
 // Bounded by the service (MAX_COORDINATE_M); not restated here, where every schema byte is paid per tool list.
 const coordinate = z.number()

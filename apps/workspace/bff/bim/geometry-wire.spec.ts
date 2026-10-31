@@ -59,9 +59,9 @@ describe('the geometry request', () => {
     expect(ok({ op: 'within', box: { min: [2, 0, 0], max: [1, 1, 1] } })).toBe(false)
   })
 
-  it('refuses a malformed GlobalId and an unknown op', () => {
-    expect(ok({ op: 'boxes', globalIds: ['short'] })).toBe(false)
+  it('refuses an unknown op; a malformed GlobalId is the service’s 400 (wire.py), not restated here', () => {
     expect(ok({ op: 'explode' })).toBe(false)
+    expect(ok({ op: 'boxes', globalIds: ['short'] })).toBe(true)
   })
 
   it('names the raw-coordinate forms an agent may not send', () => {

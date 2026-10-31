@@ -60,10 +60,9 @@ export const bimOperations = [
     domain: 'bim',
     summary: 'Ask where elements of a BIM model are: boxes, proximity, rooms, clashes, changes',
     description:
-      'Where elements are, by GlobalId (from a model query). IFC world, Z-up, metres. `op`: boxes (min, max, centroid ' +
-      'per id); group-boxes (union box per key); within (aroundGlobalId grown by margin); near (globalId, radius); ' +
-      'in-room (spaceGlobalId); neighbours (globalId, gap); clash (setA, setB, mode, tolerance: pairs); diff (baseModelId: ' +
-      'added, removed, moved, resized); warm. 409 geometry_warming: retry after retryAfter s.',
+      'Where elements are, by GlobalId. IFC world, Z-up, metres. op: boxes; group-boxes (union per key); within ' +
+      '(aroundGlobalId, margin); near (globalId, radius); in-room (spaceGlobalId); neighbours (globalId, gap); clash ' +
+      '(setA, setB, mode, tolerance); diff (baseModelId); warm. 409 geometry_warming: retry after retryAfter.',
     method: 'POST',
     path: '/api/bim/models/[modelId]/geometry',
     params: modelParams,

@@ -167,6 +167,10 @@ class TestOperations:
             call_tool({"modelId": MODEL, "operation": {"op": "within", "aroundGlobalId": "0" * 22}}).status_code == 400
         )
 
+    def test_a_malformed_global_id_is_400_here_the_bff_does_not_restate_the_pattern(self, fake):
+        response = call_tool({"modelId": MODEL, "operation": {"op": "boxes", "globalIds": ["short"]}})
+        assert (response.status_code, response.json()["code"]) == (400, "invalid_request")
+
     def test_the_engine_s_refusal_is_400_with_its_message(self, fake):
         response = call_tool({"modelId": MODEL, "operation": {"op": "near", "globalId": "0" * 22, "radius": 2}})
         assert response.status_code == 400
