@@ -174,8 +174,10 @@ export const diagrams = {
   // A sketch over a PDF page (S6): the page lies locked underneath, on its version.
   underlay: {
     title: '{name}, p. {page} — sketch',
-    drawOnPage: 'Draw on page',
-    drawOnPageHint: 'Start a sketch over this page. It stays on this version and is not to scale.',
+    startOnPage: 'Start a sketch on this page',
+    startOnPageHint: 'A sketch of its own over this page, on this version, not to scale.',
+    backToPage: 'To page {page} of the version',
+    backToPageUnsaved: 'Save first: unsaved strokes would be lost going to the page.',
     creating: 'Creating the sketch …',
     createFailed: 'The sketch could not be created.',
     loading: 'Loading the page …',

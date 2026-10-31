@@ -5,4 +5,4 @@
  * on every sketch canvas, and either of those would put the review's whole
  * subtree below it (`task workspace:blast-radius`).
  */
-export { sketchLinkHref, type AvailableSketchLink } from './lib/sketch-link-href'
+export { pageReviewHref, sketchLinkHref, type AvailableSketchLink } from './lib/sketch-link-href'

@@ -21,7 +21,7 @@ import { DocumentVersionStateBadge } from './document-version-badge'
 import { DiscussDocumentButton } from './discuss-document-button'
 import { dropFileSubject } from '../lib/open-file-peek'
 
-import { Presence } from './review/document-review'
+import { Presence } from './review/presence'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 

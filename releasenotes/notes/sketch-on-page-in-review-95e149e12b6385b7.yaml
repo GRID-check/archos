@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    A sketch over a page of a PDF drawing now starts in the page's review:
+    „Skizze auf dieser Seite beginnen“ in the review's menu replaces „Auf Seite
+    zeichnen“ in the viewer's toolbar. The sketch opens as a document of its
+    own, and its annotations work from the first open.
+  - >
+    A sketch drawn on a page leads back to it: „Zur Seite 2 der Fassung“ above
+    the canvas opens the drawing's review at that page, once your strokes are
+    saved.

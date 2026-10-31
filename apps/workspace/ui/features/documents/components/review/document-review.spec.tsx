@@ -32,8 +32,16 @@ const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), succ
 vi.mock('sonner', async (importOriginal) => ({ ...(await importOriginal<typeof import('sonner')>()), toast: toastMock }))
 
 vi.mock('@/features/knowledge/components/pdf-document-view', () => ({
-  PdfDocumentView: ({ pageOverlay, toolbarLead }: { pageOverlay?: (page: number) => ReactNode; toolbarLead?: ReactNode }) => (
-    <div>
+  PdfDocumentView: ({
+    pageOverlay,
+    toolbarLead,
+    focus,
+  }: {
+    pageOverlay?: (page: number) => ReactNode
+    toolbarLead?: ReactNode
+    focus?: { page: number } | null
+  }) => (
+    <div data-testid="pdf-view" data-focus-page={focus?.page ?? ''}>
       <div data-testid="pdf-floating-toolbar">{toolbarLead}</div>
       <div style={{ position: 'relative', width: 800, height: 600 }}>
         <div>{pageOverlay?.(1)}</div>
@@ -95,7 +103,9 @@ function Host({
   onOpenChange = () => {},
   revision = null,
   protocolFiling = null,
+  focusRequest = null,
 }: {
+  focusRequest?: { annotationId: string | null; page?: number | null; key: number } | null
   popoutHref?: string | null
   initialTool?: ReviewTool
   onOpenChange?: (open: boolean) => void
@@ -114,6 +124,7 @@ function Host({
       popoutHref={popoutHref}
       initialTool={initialTool}
       protocolFiling={protocolFiling}
+      focusRequest={focusRequest}
     />
   )
 }
@@ -748,5 +759,13 @@ describe('opening the review reads the news about new marks', () => {
     )
     render(<Host />)
     await waitFor(() => expect(reads).toContainEqual({ resourceType: 'document', resourceId: 'doc_1', marksSet: true }))
+  })
+})
+
+describe('entered at a page (a Skizze’s „Zur Seite N der Fassung“)', () => {
+  it('opens the review at that page', async () => {
+    serve([])
+    render(<Host focusRequest={{ annotationId: null, page: 3, key: 1 }} />)
+    await waitFor(() => expect(screen.getByTestId('pdf-view').dataset.focusPage).toBe('3'))
   })
 })

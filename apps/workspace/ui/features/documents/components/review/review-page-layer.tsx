@@ -81,13 +81,13 @@ function AgentCursor({ state, idle }: { state: RoomPeerState; idle?: boolean }):
       // Paper ink, never `--foreground`: the page stays white in dark mode.
       color="var(--paper-ink)"
       idle={idle}
-      label={agentCursorLabel(state, tPresence('piloti.reading', { page: state.activity?.box?.page ?? 1 }))}
+      label={agentCursorLabel(state, tPresence('agent.reading', { page: state.activity?.box?.page ?? 1 }))}
       icon={<Sparkles className="size-3" aria-hidden />}
       busy={
         forShort ? (
           <>
             <span data-testid="agent-cursor-for" className="shrink-0">
-              {tPresence('piloti.forSuffix', { name: forShort })}
+              {tPresence('agent.forSuffix', { name: forShort })}
             </span>
             {dots}
           </>

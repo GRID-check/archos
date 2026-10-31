@@ -22,7 +22,6 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { Button } from '@/components/ui/button'
-import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { FloatingNote, FloatingToolbar, ToolbarIconButton } from '@/components/ui/floating-toolbar'
 import { Kbd } from '@/components/ui/kbd'
@@ -35,7 +34,6 @@ import { liveLine } from '@/features/chat/lib/turn-events'
 import { useLocale, useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { filesCopy } from '@/i18n/namespaces/files'
-import { presenceCopy } from '@/i18n/namespaces/presence'
 import { isGhostMark, type AnnotationView } from '@/lib/annotations/types'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
@@ -45,13 +43,14 @@ import { sameValue } from '@/lib/utils/same-value'
 import {
   useRoomPeers,
   useRoomSelector,
-  type DocumentRoom,
   type RoomPeerState,
 } from '../../hooks/use-document-room'
 import { CursorChat } from './cursor-chat'
 import { keepTrigger, restoreFocus } from './focus-return'
 import { AgentAnswerCard } from './agent-answer-card'
-import { isAgentPeer, ReviewPageLayer } from './review-page-layer'
+import { ReviewPageLayer } from './review-page-layer'
+import { pageOf, people, Presence } from './presence'
+import { ReviewPageMenu } from './review-page-menu'
 import { ReviewPanel, type OpenMark } from './review-panel'
 import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
@@ -207,151 +206,6 @@ const toolOffered = (tool: ReviewTool, review: ReviewState): boolean =>
 /** Whether a key press belongs to a field the reader is typing in. */
 const typing = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-
-/** The people in the room, one face per person however many tabs they have open. Piloti is not one of them. */
-export function people(peers: readonly RoomPeerState[]): RoomPeerState[] {
-  const byUser = new Map<string, RoomPeerState>()
-  for (const state of peers) {
-    if (!isAgentPeer(state) && !byUser.has(state.peer.userId)) byUser.set(state.peer.userId, state)
-  }
-  return [...byUser.values()]
-}
-
-/**
- * Who is in the room, as the header tells it: the people, one per person, and
- * the page each is on; and Piloti, what it is doing and for whom. Equal by
- * value from one pointer frame to the next, so the faces, the header and the
- * file preview that read it re-render when somebody comes, goes or turns a
- * page, not when a pointer moves.
- */
-export interface RoomCompany {
-  people: Array<{ peerId: string; userId: string; name: string; page: number | null }>
-  piloti: { forName: string | null; working: boolean; label: string | null } | null
-}
-
-export function roomCompanyOf(peers: readonly RoomPeerState[]): RoomCompany {
-  const piloti = peers.find(isAgentPeer) ?? null
-  return {
-    people: people(peers).map((state) => ({
-      peerId: state.peer.peerId,
-      userId: state.peer.userId,
-      name: state.peer.name,
-      page: pageOf(state),
-    })),
-    piloti: piloti
-      ? { forName: piloti.peer.forName ?? null, working: Boolean(piloti.activity), label: piloti.activity?.label ?? null }
-      : null,
-  }
-}
-
-/** The room's company, re-rendering only when it changed: see {@link RoomCompany}. */
-export const useRoomCompany = (room: Pick<DocumentRoom, 'peers'>): RoomCompany =>
-  useRoomSelector(room, roomCompanyOf, sameValue)
-
-/**
- * Who else is here, as faces in their colour. A face is also the way to follow
- * them: the view goes where theirs goes until the reader moves on their own.
- * Without `onFollow` (the file preview's header) the faces only tell, and the
- * caller says in words who they are.
- */
-export function Presence({
-  review,
-  following = null,
-  onFollow,
-}: {
-  review: ReviewState
-  following?: string | null
-  onFollow?: (peerId: string | null) => void
-}): JSX.Element | null {
-  const t = useTranslations(filesCopy)
-  const tPresence = useTranslations(presenceCopy)
-  const { people: others, piloti } = useRoomCompany(review.room)
-  // Piloti in the room as itself: a peer the server publishes while it works on
-  // the document, naming whose request it works on (ADR-0105). The full name
-  // here, where there is room; the cursor tag carries the first name.
-  const forName = piloti?.forName
-  const onBehalf = forName ? tPresence('piloti.onBehalfOf', { name: forName }) : null
-  if (others.length === 0 && !piloti) return null
-  if (!onFollow) {
-    return (
-      <span aria-hidden className="flex items-center -space-x-1" data-testid="review-presence">
-        {piloti && (
-          <span className="ring-background rounded-full ring-2">
-            <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
-          </span>
-        )}
-        {others.map((person) => (
-          <PersonAvatar
-            key={person.userId}
-            size="sm"
-            className="ring-background size-7 text-[10px] ring-2"
-            person={{ userId: person.userId, name: person.name, profilePictureUrl: null }}
-          />
-        ))}
-      </span>
-    )
-  }
-  return (
-    <div className="flex items-center -space-x-1" data-testid="review-presence">
-      {piloti && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span data-testid="review-presence-agent" className="ring-background rounded-full ring-2">
-              <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            {onBehalf ? (
-              <>
-                <span className="block">{onBehalf}</span>
-                {piloti.label && <span className="block">{piloti.label}</span>}
-              </>
-            ) : (
-              piloti.label || t('review.agentWorking')
-            )}
-          </TooltipContent>
-        </Tooltip>
-      )}
-      {others.map((person) => {
-        const on = following === person.peerId
-        return (
-          <Tooltip key={person.userId}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                data-testid="review-peer"
-                aria-pressed={on}
-                aria-label={on ? t('review.unfollow', { name: person.name }) : t('review.follow', { name: person.name })}
-                onClick={() => onFollow(on ? null : person.peerId)}
-                className="relative rounded-full outline-none focus-visible:ring-2"
-              >
-                <PersonAvatar
-                  size="sm"
-                  className="ring-background size-7 text-[10px] ring-2"
-                  person={{ userId: person.userId, name: person.name, profilePictureUrl: null }}
-                />
-                <span
-                  aria-hidden
-                  className={cn('absolute -inset-[3px] rounded-full border-2', on ? 'opacity-100' : 'opacity-0')}
-                  style={{ borderColor: identityInk(person.userId) }}
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <span className="block">
-                {on ? t('review.unfollow', { name: person.name }) : t('review.follow', { name: person.name })}
-              </span>
-              {person.page && <span className="block">{t('review.onPage', { name: person.name, page: person.page })}</span>}
-            </TooltipContent>
-          </Tooltip>
-        )
-      })}
-    </div>
-  )
-}
-
-/** The page a person is on: where their pointer is, else where they are scrolled to. */
-const pageOf = (state: RoomPeerState): number | null => state.cursor?.page ?? state.viewport?.page ?? null
 
 /** Where a colleague is from this reader's view: in it, or past its top or bottom edge. */
 export type PeerSide = 'here' | 'above' | 'below'
@@ -618,6 +472,7 @@ export function DocumentReviewMode({
   initialTool,
   onPage,
   protocolFiling = null,
+  openCreated = null,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -626,8 +481,8 @@ export function DocumentReviewMode({
   /** „Fassung 3", when the document has Fassungen to tell apart. */
   revisionLabel?: string | null
   canPickAssignee: boolean
-  /** A mark to open at, when the review was entered from one. */
-  focusRequest?: { annotationId: string; key: number } | null
+  /** A mark to open at, or a page (a Skizze's „Zur Seite N“), when the review was entered at one. */
+  focusRequest?: { annotationId: string | null; page?: number | null; key: number } | null
   /** The review on a page of its own: offered as a window of its own, and as a link to send. */
   popoutHref?: string | null
   /** A tool to have in hand once the review opens (entered by „Anmerken"). */
@@ -639,6 +494,8 @@ export function DocumentReviewMode({
    * project's, archived, a closed project). Offered only to a reader who may write the document's folder.
    */
   protocolFiling?: ProtocolFilingTarget | null
+  /** Opens a document the page menu made (a Skizze on this page) with its own review; null offers no page menu. */
+  openCreated?: ((documentId: string) => void) | null
 }): JSX.Element {
   const t = useTranslations(filesCopy)
   const { locale } = useLocale()
@@ -831,6 +688,11 @@ export function DocumentReviewMode({
   const handled = useRef<number | null>(null)
   useEffect(() => {
     if (!open || !focusRequest || handled.current === focusRequest.key) return
+    const { page } = focusRequest
+    if (!focusRequest.annotationId && page) {
+      handled.current = focusRequest.key
+      return setFocus({ page, y: 0, key: `page:${page}:${focusRequest.key}`, instant: true })
+    }
     const target = annotations.find((annotation) => annotation.id === focusRequest.annotationId)
     if (!target) return
     handled.current = focusRequest.key
@@ -1126,6 +988,7 @@ export function DocumentReviewMode({
               </span>
             )}
             <Presence review={review} following={following} onFollow={setFollowing} />
+            <ReviewPageMenu documentId={review.documentId} page={viewPage ?? 1} onCreated={openCreated} />
             {popoutHref && (
               // A window of its own for a second screen, and the link to send: both quiet, beside the faces.
               <span className="flex items-center max-sm:hidden">

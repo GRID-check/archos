@@ -6,7 +6,9 @@
  *   - {@link UnderlayBanner}: above the canvas, what the strokes lie on
  *     („Liegt auf Lageplan.pdf, Fassung 3, S. 2“) and the doctrine (nothing is
  *     measured on it); when the base has a newer Fassung, „liegt auf Fassung 3,
- *     aktuell 4“ and „Auf neue Fassung übertragen“.
+ *     aktuell 4“ and „Auf neue Fassung übertragen“; and the way
+ *     back, „Zur Seite N der Fassung“, the review of the page it lies on
+ *     (slice 1: a page has one canvas, and the Skizze links back to it).
  *   - {@link UnderlayMoveDialog}: the move, decided by a person, never on its
  *     own (research r2): the page it would land on (by its label, else its
  *     number), old and new shown alone or overlaid, and „Übertragen“, which
@@ -15,7 +17,8 @@
  * Both pages come from the raster route with the reader's rights.
  */
 
-import { Layers } from 'lucide-react'
+import { ArrowUpLeft, Layers } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getUnderlayMovePlan, moveSketchUnderlay, pageRasterUrl, SketchRequestError } from '@/adapters/api/diagrams-client'
 import type { SketchUnderlayView, UnderlayMovePlan } from '@/lib/diagrams/sketch-underlay-wire'
@@ -24,6 +27,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
+import { pageReviewHref } from '@/features/documents/sketch-link-target'
 
 export interface UnderlayBannerProps {
   underlay: SketchUnderlayView
@@ -35,9 +39,13 @@ export interface UnderlayBannerProps {
   canMove: boolean
   /** The move saved a new Fassung: the editor reopens on it. */
   onMoved: (versionNumber: number) => void
+  /** The project both lie in, for the way back to the page; null offers none. */
+  projectId?: string | null
+  /** Unsaved strokes: leaving would lose them, so the way back waits for the save. */
+  dirty?: boolean
 }
 
-export function UnderlayBanner({ underlay, shown, documentId, baseVersionId, canMove, onMoved }: UnderlayBannerProps) {
+export function UnderlayBanner({ underlay, shown, documentId, baseVersionId, canMove, onMoved, projectId = null, dirty = false }: UnderlayBannerProps) {
   const t = useTranslations(diagramsCopy)
   const [moving, setMoving] = useState(false)
   if (underlay.state === 'unavailable' || shown === false) {
@@ -59,6 +67,7 @@ export function UnderlayBanner({ underlay, shown, documentId, baseVersionId, can
         </span>
       ) : null}
       <span className="text-muted-foreground">{t('underlay.noMeasure')}</span>
+      {projectId ? <BackToPage projectId={projectId} underlay={underlay} dirty={dirty} /> : null}
       {underlay.newer && canMove ? (
         <Button size="sm" variant="outline" className="ml-auto h-7" onClick={() => setMoving(true)} data-testid="sketch-underlay-move">
           {t('underlay.moveAction')}
@@ -78,6 +87,29 @@ export function UnderlayBanner({ underlay, shown, documentId, baseVersionId, can
         />
       ) : null}
     </div>
+  )
+}
+
+/** „Zur Seite N der Fassung“: the review of the page the Skizze lies on, at that page. */
+function BackToPage({ projectId, underlay, dirty }: { projectId: string; underlay: SketchUnderlayView; dirty: boolean }) {
+  const t = useTranslations(diagramsCopy)
+  const label = (
+    <>
+      <ArrowUpLeft className="size-3.5" aria-hidden />
+      {t('underlay.backToPage', { page: String(underlay.ref.page) })}
+    </>
+  )
+  if (dirty) {
+    return (
+      <Button size="sm" variant="ghost" className="h-7 gap-1" disabled title={t('underlay.backToPageUnsaved')} data-testid="sketch-underlay-back">
+        {label}
+      </Button>
+    )
+  }
+  return (
+    <Button size="sm" variant="ghost" className="h-7 gap-1" asChild data-testid="sketch-underlay-back">
+      <Link href={pageReviewHref(projectId, underlay.ref.documentId, underlay.ref.page)}>{label}</Link>
+    </Button>
   )
 }
 

@@ -47,3 +47,11 @@ export function sketchLinkHref(link: ResolvedSketchLink): string | null {
   }
   return withDocumentLocus(shelfDocumentHref(link), { page: link.page ?? null })
 }
+
+/**
+ * A traced Skizze's way back (S6, slice 1): the review of the document it lies on, opened at its page.
+ * The page rides as the preview's `page` (`document-locus.ts`), which the review opens at.
+ */
+export function pageReviewHref(projectId: string, documentId: string, page: number): string {
+  return withDocumentLocus(reviewFilesHref(projectId, { documentId }), { page })
+}

@@ -1680,6 +1680,8 @@ export const files = {
       ask: 'Drag a frame around the detail to ask {productName} about, with one finger',
     },
     popout: 'Open in a new window',
+    pageMenu: 'More for page {page}',
+    pageMenuLabel: 'Page {page}',
     copyReviewLink: 'Copy link to the review',
     // Mentioning colleagues on an annotation or in its thread with "@", as in the chat.
     // Only people who can open the document can be mentioned. Whom the server did not keep is

@@ -14,7 +14,7 @@ export const presence = {
    * Whose request Piloti is working on, wherever it is present (ADR-0105; EU AI
    * Act Art. 50). `{name}` is the person it acts for.
    */
-  piloti: {
+  agent: {
     /** The tooltip on Piloti's face in a presence stack. */
     onBehalfOf: '{productName} · for {name}',
     /** After the words on Piloti's cursor tag („Piloti“, „Treppe“), never clipped: „Treppe · für Anna“. */

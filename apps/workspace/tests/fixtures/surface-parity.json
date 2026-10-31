@@ -376,6 +376,24 @@
     "card": null,
     "step": null
    }
+  },
+  "sketchOnPage": {
+   "summary": "Start a sketch traced over the page in view; it opens as a document of its own, linked back to its page",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [
+    "document-sketch-from-page"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/diagrams/sketch/sketch-on-page-item.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "exempt",
+    "reason": "The Skizze is a document of its own: the chat names it as it names any document Piloti made"
+   }
   }
  }
 }

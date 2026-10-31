@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { type ReactNode } from 'react'
+import { SketchPreviewActions } from '@/features/diagrams/sketch-preview-actions'
 
 /**
  * Server gate for every `/dev/*` preview route.
@@ -13,8 +14,13 @@ import { type ReactNode } from 'react'
  * This layout is a Server Component, so the check runs on a server boundary and
  * every nested preview route inherits it: none can forget the gate, and no new
  * preview has to remember to add one.
+ *
+ * It also provides what the app shell provides (`app/app/layout.tsx`): the
+ * Files preview's action slot, so a preview of the pane or the review shows
+ * „Als Skizze bearbeiten“ and the review's page menu as the product does
+ * (`/dev/annotations?doc=dev-doc-annotations&review=1`, the header's ⋯).
  */
 export default function DevLayout({ children }: { children: ReactNode }): ReactNode {
   if (process.env.NODE_ENV !== 'development') notFound()
-  return children
+  return <SketchPreviewActions>{children}</SketchPreviewActions>
 }

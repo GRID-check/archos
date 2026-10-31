@@ -55,7 +55,7 @@ Chosen option 3.
   the live wire and Piloti's edit admit it through that one file; any other image, an
   unlocked, cropped, turned or flipped one, or a second one is refused. The fence a model
   writes has no `image` type, so Piloti cannot start an underlay in this slice; a person
-  starts one from a PDF page („Auf Seite zeichnen“), an outside agent through
+  starts one from a PDF page („Skizze auf dieser Seite beginnen“ in the review's page menu; „Auf Seite zeichnen“ in the toolbar until 2026-10-31), an outside agent through
   `document-sketch-from-page`.
 * **The raster is the server's.** `GET …/versions/{v}/pages/{n}/raster` draws the page in
   the backend (pypdfium, a 16-colour palette PNG, long side ≤ 4096 px), cached per

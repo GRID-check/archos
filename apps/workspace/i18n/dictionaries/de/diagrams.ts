@@ -113,8 +113,11 @@ export const diagrams: typeof en.diagrams = {
   // Eine Skizze über einer PDF-Seite (S6): die Seite liegt gesperrt darunter, an ihrer Fassung.
   underlay: {
     title: '{name}, S. {page} — Skizze',
-    drawOnPage: 'Auf Seite zeichnen',
-    drawOnPageHint: 'Eine Skizze über dieser Seite beginnen. Sie bleibt an dieser Fassung und ist nicht maßstäblich.',
+    startOnPage: 'Skizze auf dieser Seite beginnen',
+    startOnPageHint: 'Eine eigene Skizze über dieser Seite, an dieser Fassung, nicht maßstäblich.',
+    // Der Rückweg aus der Skizze zur Seite, auf der sie liegt: deren Prüfansicht.
+    backToPage: 'Zur Seite {page} der Fassung',
+    backToPageUnsaved: 'Erst speichern: ungespeicherte Striche gingen beim Wechsel zur Seite verloren.',
     creating: 'Skizze wird angelegt …',
     createFailed: 'Die Skizze konnte nicht angelegt werden.',
     loading: 'Seite wird geladen …',

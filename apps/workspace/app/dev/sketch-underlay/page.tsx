@@ -134,7 +134,7 @@ function Underlay() {
         source=""
         elements={[]}
         title="Wand im Wohnen"
-        revision={{ documentId: DOCUMENT_ID, baseVersionId: 'ver-5', scene, canWrite: !reader, underlay, projectId: null }}
+        revision={{ documentId: DOCUMENT_ID, baseVersionId: 'ver-5', scene, canWrite: !reader, underlay, projectId: 'dev-project' }}
       />
       {urls[V4] ? (
         <UnderlayMoveDialog

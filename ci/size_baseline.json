@@ -120,7 +120,7 @@
     "apps/workspace/ui/features/documents/components/folder-brief.tsx": 693,
     "apps/workspace/ui/features/documents/components/folder-navigation.tsx": 942,
     "apps/workspace/ui/features/documents/components/folder-upload-dialog.tsx": 993,
-    "apps/workspace/ui/features/documents/components/review/document-review.tsx": 1272,
+    "apps/workspace/ui/features/documents/components/review/document-review.tsx": 1136,
     "apps/workspace/ui/features/documents/components/review/review-page-layer.tsx": 1137,
     "apps/workspace/ui/features/documents/components/review/review-panel.tsx": 601,
     "apps/workspace/ui/features/documents/components/review/thread-card.tsx": 1227,

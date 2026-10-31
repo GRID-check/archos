@@ -1,5 +1,9 @@
 
 
+import { useRouter } from 'next/navigation'
+
+import { openReviewAt } from '../lib/open-review'
+
 import { DocumentActionsMenu } from './document-actions'
 
 import { DiscussDocumentButton } from './discuss-document-button'
@@ -12,6 +16,11 @@ import type { FilePreviewController } from './use-file-preview-controller'
 
 export function FilePreviewFooter({ controller }: { controller: FilePreviewController }) {
   const { actions, canCollaborate, canManage, closedProjectName, detailsOpen, discussHint, file, handleDeleted, inChat, moveInSheet, onRenamed, onReviewOpenChange, onReviewPage, pdfInWell, popoutHref, projectId, reader, readerAnnotate, review, reviewFocus, reviewOpen, reviewTool, scope, setDetailsOpen, sideways, t } = controller
+  const router = useRouter()
+  /** A document the review's page menu made (a Skizze on the page): opened with its own review, in the chat's pane or in Dateien. */
+  const openCreated = projectId
+    ? (documentId: string) => void openReviewAt({ documentId }, { projectId, canCollaborate, navigate: (href, how) => router[how](href, { scroll: false }) })
+    : null
   return (
     <>
         {reader && !sideways && (
@@ -72,6 +81,7 @@ export function FilePreviewFooter({ controller }: { controller: FilePreviewContr
             popoutHref={popoutHref}
             initialTool={reviewTool ?? undefined}
             onPage={onReviewPage}
+            openCreated={openCreated}
             // The Protokoll filed as a document: a project's file, in its own folder. Who may file there
             // (write in that folder) the review knows, and decides (`canAnnotate`).
             protocolFiling={

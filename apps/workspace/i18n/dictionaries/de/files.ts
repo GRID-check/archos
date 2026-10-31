@@ -1640,6 +1640,9 @@ export const files: typeof en.files = {
       ask: 'Ziehen Sie mit einem Finger einen Rahmen um das Detail, zu dem Sie {productName} fragen',
     },
     popout: 'In neuem Fenster öffnen',
+    // Das Seitenmenü der Prüfansicht: was sich mit der Seite im Blick tun lässt (eine Skizze darauf beginnen).
+    pageMenu: 'Mehr zu Seite {page}',
+    pageMenuLabel: 'Seite {page}',
     copyReviewLink: 'Link zur Prüfansicht kopieren',
     // Kolleginnen in einer Anmerkung oder ihrem Verlauf mit „@“ erwähnen, wie im Chat.
     // Erwähnen kann man nur, wer das Dokument öffnen kann. Wen der Server nicht behielt, nennt der

@@ -211,6 +211,13 @@ export const SURFACE_CAPABILITIES = {
     // The row under the answer: what moved, „Zurück“, or „Anzeigen“ when it did not.
     chat: { component: 'features/chat/components/ViewerActionRow.tsx' },
   },
+  sketchOnPage: {
+    summary: 'Start a sketch traced over the page in view; it opens as a document of its own, linked back to its page',
+    operations: ['document-sketch-from-page'],
+    // „Skizze auf dieser Seite beginnen“ in the review's page menu: a page has one canvas, its review (slice 1).
+    canvas: { component: 'features/diagrams/sketch/sketch-on-page-item.tsx' },
+    chat: { exempt: 'The Skizze is a document of its own: the chat names it as it names any document Piloti made' },
+  },
 } as const satisfies Readonly<Record<string, SurfaceCapability>>
 
 export type SurfaceCapabilityName = keyof typeof SURFACE_CAPABILITIES
@@ -221,6 +228,7 @@ export const CANVAS_RELATED_OPERATIONS = [
   'document-revision-compare',
   'document-revision-candidates',
   'document-revision-link-set',
+  'document-sketch-from-page',
 ] as const
 
 /** Whether `name` is a catalog operation of the canvas: a mark, a thread, an export of marks, or a listed one. */

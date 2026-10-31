@@ -291,6 +291,8 @@ export function SketchDialog({ open, onOpenChange, source, elements, title, revi
             baseVersionId={revision.baseVersionId}
             canMove={canWrite && (revision.saveTarget ?? 'published') === 'published' && !dirty}
             onMoved={(number) => revision.onUnderlayMoved?.(number)}
+            projectId={revision.projectId ?? null}
+            dirty={dirty}
           />
         ) : null}
         <div className="border-border min-h-0 flex-1 overflow-hidden rounded-lg border phone:rounded-none phone:border-x-0">

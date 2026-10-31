@@ -11,8 +11,11 @@
  * action (`app/app/layout.tsx`), the preview renders whatever is provided, and
  * without a provider (a spec, a surface outside the shell) it renders nothing.
  *
- * The second is „Auf Seite zeichnen“ in the PDF viewer's toolbar (S6), a page
- * action: it is given the page in view.
+ * The second is a page action in the review's page menu: „Skizze auf dieser
+ * Seite beginnen“ (S6, slice 1 of `docs/roadmap/working-on-a-plan.md`). A page
+ * has one canvas, its review, so the entry lives there and not beside it; the
+ * action is given the page in view and hands back the Skizze it made, which
+ * the review opens with its own review (`onCreated`).
  */
 
 import { createContext, useContext, type ComponentType, type ReactNode } from 'react'
@@ -33,15 +36,18 @@ export interface PreviewDocumentActionProps {
   reviewRequest?: { open: boolean; annotationId: string | null; onOpenChange: (open: boolean) => void } | null
 }
 
-/** What a page action is given: the document, and the page the viewer shows. */
-export interface PreviewPageActionProps {
+/** What a page action is given: the document, the page the review shows, and where its result goes. */
+export interface ReviewPageActionProps {
   documentId: string
-  contentType: string | null
   page: number
+  /** The action made a document (a Skizze on the page): the review opens it. */
+  onCreated: (documentId: string) => void
+  /** The action failed, in words the review shows in its toaster. */
+  onFailed: (message: string) => void
 }
 
 const PreviewDocumentActionContext = createContext<ComponentType<PreviewDocumentActionProps> | null>(null)
-const PreviewPageActionContext = createContext<ComponentType<PreviewPageActionProps> | null>(null)
+const ReviewPageActionContext = createContext<ComponentType<ReviewPageActionProps> | null>(null)
 
 export function PreviewDocumentActionProvider({
   action,
@@ -49,21 +55,18 @@ export function PreviewDocumentActionProvider({
   children,
 }: {
   action: ComponentType<PreviewDocumentActionProps>
-  pageAction?: ComponentType<PreviewPageActionProps> | null
+  pageAction?: ComponentType<ReviewPageActionProps> | null
   children: ReactNode
 }) {
   return (
     <PreviewDocumentActionContext.Provider value={action}>
-      <PreviewPageActionContext.Provider value={pageAction}>{children}</PreviewPageActionContext.Provider>
+      <ReviewPageActionContext.Provider value={pageAction}>{children}</ReviewPageActionContext.Provider>
     </PreviewDocumentActionContext.Provider>
   )
 }
 
-/** The provided page action for this page, or nothing. */
-export function PreviewPageAction(props: PreviewPageActionProps) {
-  const Action = useContext(PreviewPageActionContext)
-  return Action ? <Action {...props} /> : null
-}
+/** The provided page action, a menu item of the review's page menu; null when nothing is provided. */
+export const useReviewPageAction = (): ComponentType<ReviewPageActionProps> | null => useContext(ReviewPageActionContext)
 
 /** The provided action for this document, or nothing. */
 export function PreviewDocumentAction(props: PreviewDocumentActionProps) {

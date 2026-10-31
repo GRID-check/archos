@@ -22,26 +22,35 @@ import { dropFileSubject } from '../lib/open-file-peek'
 
 import { ReviewPageLayer } from './review/review-page-layer'
 import { InlineMarkPeek } from './inline-mark-peek'
-import { PreviewPageAction } from '../preview-actions'
 
 import { PEEK_SUMMARY_CLAMP_LINES, PageMock, PeekPanel, PeekStage } from './file-preview-peek'
 
 import { IfcFilePreview } from './file-preview-pane-lazy'
 import type { FilePreviewController } from './use-file-preview-controller'
 
-/** The picture with its marks drawn over it, in a box exactly its size; without marks, the picture alone. */
-function SheetWithMarks({ on, overlay, children }: { on: boolean; overlay: ReactNode; children: ReactNode }) {
+/** A Skizze's sheet: the picture in a box exactly its size, its marks over it; any other picture alone. */
+function SheetMarks({ on, marks, children }: { on: boolean; marks: ReactNode; children: ReactNode }) {
   if (!on) return <>{children}</>
   return (
     <div className="relative h-fit max-h-full w-fit max-w-full" data-testid="sketch-sheet">
       {children}
-      {overlay}
+      {marks}
     </div>
   )
 }
 
 export function FilePreviewDocumentPanel({ controller }: { controller: FilePreviewController }) {
   const { actions, annotateLead, canPreview, file, findSimilar, handlePdfFailed, inlineViewer, isLoading, isModel, isOfficeRendition, isTextual, kind, linkedLocus, loadPreview, openReview, pdfInWell, peeking, previewFailed, previewGone, previewImageUrl, previewText, previewUrl, projectId, reader, review, setPreviewFailed, setPreviewImageUrl, setPreviewUrl, showModels, shownFinding, sketchInWell, shownPage, shownType, sideways, t, viewerTarget, wellHostsViewer, wellRef } = controller
+  /**
+   * A page's marks, drawn the way the review draws them (`ReviewPageLayer`, unfocused) with the peek
+   * beside a pin: one path for a PDF page and for a Skizze's one sheet, a click opening the review.
+   */
+  const marksOn = (page: number) => (
+    <>
+      <ReviewPageLayer page={page} review={review} focused={false} onOpenMark={openReview} />
+      <InlineMarkPeek page={page} review={review} onOpenMark={openReview} />
+    </>
+  )
   return (
     <>
           {/* Left: live preview, or a decorative page mock while loading / when
@@ -160,22 +169,9 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                       onLoadError={handlePdfFailed}
                       ground={peeking ? 'host' : 'stage'}
                       bleed={reader}
-                      pageOverlay={(page) => (
-                        <>
-                          <ReviewPageLayer page={page} review={review} focused={false} onOpenMark={openReview} />
-                          <InlineMarkPeek page={page} review={review} onOpenMark={openReview} />
-                        </>
-                      )}
-                      toolbarLead={
-                        projectId && !reader
-                          ? (page: number) => (
-                              <>
-                                {annotateLead}
-                                <PreviewPageAction documentId={file.id} contentType={shownType} page={page} />
-                              </>
-                            )
-                          : annotateLead
-                      }
+                      pageOverlay={marksOn}
+                      // A page has one canvas, its review: „Skizze auf dieser Seite beginnen“ is in its page menu.
+                      toolbarLead={annotateLead}
                       className="size-full"
                     />
                   ) : (
@@ -198,12 +194,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                   //
                   // A Skizze's sheet carries its Anmerkungen on its one page, as a PDF page does: the
                   // pins over the picture, a click opening them in the sketch editor (`openReview`).
-                  <SheetWithMarks on={sketchInWell} overlay={
-                    <>
-                      <ReviewPageLayer page={1} review={review} focused={false} onOpenMark={openReview} />
-                      <InlineMarkPeek page={1} review={review} onOpenMark={openReview} />
-                    </>
-                  }>
+                  <SheetMarks on={sketchInWell} marks={marksOn(1)}>
                   <Image
                     src={previewImageUrl ?? previewUrl}
                     alt={actions.name}
@@ -230,7 +221,7 @@ export function FilePreviewDocumentPanel({ controller }: { controller: FilePrevi
                       peeking ? 'shadow-md' : 'shadow-lg'
                     )}
                   />
-                  </SheetWithMarks>
+                  </SheetMarks>
                 )
               ) : (
                 <PageMock

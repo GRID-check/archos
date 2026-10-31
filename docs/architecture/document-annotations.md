@@ -425,6 +425,10 @@ reader's thumb, which opens the review with the point tool armed (`tool=point`,
 hover card („In der Prüfansicht öffnen", `inline-mark-peek.tsx`, a hovering
 pointer only: a tap on a pin opens the review as before). The pane header shows
 who is in the document with the review's own `Presence`, without following.
+`Presence` (`review/presence.tsx`) is the one presence component of a page: its
+faces are the kit's `AvatarStack`, as a conversation's roster
+(`ParticipantStrip`, who has access, not who is here) draws them, with Piloti
+in front and a face being the way to follow that person.
 
 ### A reply its author takes back or rewords
 
@@ -642,8 +646,9 @@ save announces no new revision (`sketch-version.ts`); the room hears
 and an open review reads them again. The carry is scored, `sketch-pins-kept`.
 
 **Where it is shown.** The Files preview draws the marks over the Skizze's
-sheet with the review's own layer, as a PDF page's (`SheetWithMarks`,
-`file-preview-pane-document.tsx`), and its review is the sketch editor, not
+sheet with the review's own layer, by the same path as a PDF page's (`marksOn`
+in `file-preview-pane-document.tsx`: `ReviewPageLayer` unfocused and the
+`InlineMarkPeek`), and its review is the sketch editor, not
 the Prüfansicht: a pin, „Prüfansicht öffnen“ or a link with `?review=1&mark=`
 opens the editor at that mark (`reviewRequest`, the preview's action slot,
 `features/documents/preview-actions.tsx`). In the editor the pins sit over the

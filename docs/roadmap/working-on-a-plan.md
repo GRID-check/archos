@@ -105,6 +105,15 @@ BCF at the edge; [`model-collaboration.md`](model-collaboration.md)).
    editor entry and room on the page; one mark renderer; one presence
    component; the traced Skizze reached from the review and linking back.
    Mostly deletion. Measure: nothing to measure but fewer code paths.
+   *Built 2026-10-31:* the PDF toolbar's „Auf Seite zeichnen“ and its second
+   editor mount are gone; „Skizze auf dieser Seite beginnen“ is in the review's
+   page menu and opens the Skizze as its own document with its review (pins
+   from the first open); its banner's „Zur Seite N der Fassung“ opens the
+   base's review at that page; the preview draws a PDF page's and a Skizze's
+   marks by one path; `Presence` is one component on the kit's `AvatarStack`.
+   Open: „Skizzen auf dieser Seite“ in the base's review needs a read of a
+   base's Skizzen by page, which `sketch_underlay_bases` cannot answer (no
+   page); and the Skizze still has its own room, rightly, as its own document.
 2. **The Besprechung** (decision with reason; owner, deadline, proof). Offene
    Punkte across documents as an agenda; after the meeting Piloti drafts the
    Protokoll from the marks touched, the threads and what was said in the

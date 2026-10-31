@@ -877,9 +877,17 @@ Anmerkung of kind `defect`; an Aufgabe is work handed to Piloti, so there is no
 ### A Skizze traced over a PDF page (S6)
 
 Day-to-day markup stays on plans and PDFs: a cloud and an arrow on page 12 of
-the Einreichplan. „Auf Seite zeichnen“ in the PDF viewer's toolbar
-(`sketch/draw-on-page-action.tsx`, through the preview's page-action slot)
-starts a Skizze with that page locked underneath (ADR-0150).
+the Einreichplan. „Skizze auf dieser Seite beginnen“ in the review's page menu
+(`sketch/sketch-on-page-item.tsx`, through the preview's page-action slot,
+`review/review-page-menu.tsx`) starts a Skizze with that page locked underneath
+(ADR-0150). A page has one canvas, its review, so the entry is the review's and
+not a button beside it (slice 1 of
+[`working-on-a-plan.md`](../roadmap/working-on-a-plan.md)). The Skizze is a
+document of its own and opens as one: in Files with `?review=1`, which is its
+editor with its pins (`openReviewAt`), so its Anmerkungen work from the first
+open. Its banner leads back: „Zur Seite N der Fassung“ opens the base's review
+at that page (`pageReviewHref`, the preview's `?page=`, which the review opens
+at); with unsaved strokes it waits for the save.
 
 - **A reference in the scene.** One locked `image` element at the bottom,
   `customData.underlay = { documentId, versionId, page, dpi }`, its `fileId`

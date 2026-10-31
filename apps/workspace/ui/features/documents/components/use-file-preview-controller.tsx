@@ -40,7 +40,7 @@ import { backLandsOn } from '@/lib/navigation/history-step'
 import { useFilePreviewStore } from '../stores/file-preview-store'
 import { useDocumentReview } from '../hooks/use-document-review'
 
-import { useRoomCompany } from './review/document-review'
+import { useRoomCompany } from './review/presence'
 import { tabCounts } from './review/review-panel'
 
 import { clearReviewParams, hrefWithParams, readReviewParams, reviewFilesHref, setReviewParams, type ReviewLinkTool } from '../lib/open-review'
@@ -611,14 +611,14 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
     reviewPage.current = null
     if (was && page !== null) setShownPage(page)
   }, [reviewOpen])
-  const [reviewFocus, setReviewFocus] = useState<{ annotationId: string; key: number } | null>(null)
+  const [reviewFocus, setReviewFocus] = useState<{ annotationId: string | null; page: number | null; key: number } | null>(null)
   /** The tool the review opens with: the point, from „Anmerken". */
   const [reviewTool, setReviewTool] = useState<ReviewLinkTool | null>(null)
   const { setTool: setReviewToolInHand } = review
-  /** Open the review's state, at a mark and with a tool when given; the URL is the callers'. */
+  /** Open the review's state, at a mark (or a page) and with a tool when given; the URL is the callers'. */
   const showReview = useCallback(
-    (annotationId?: string | null, tool?: ReviewLinkTool | null) => {
-      setReviewFocus(annotationId ? { annotationId, key: Date.now() } : null)
+    (annotationId?: string | null, tool?: ReviewLinkTool | null, page: number | null = null) => {
+      setReviewFocus(annotationId || page ? { annotationId: annotationId ?? null, page, key: Date.now() } : null)
       setReviewTool(tool ?? null)
       if (tool) setReviewToolInHand(tool)
       setReviewOpen(true)
@@ -671,13 +671,13 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
   useEffect(() => {
     const was = urlWasOpen.current
     urlWasOpen.current = urlOpen
-    if (urlOpen && !was && !reviewOpenRef.current) showReview(reviewLink.annotationId, reviewLink.tool)
+    if (urlOpen && !was && !reviewOpenRef.current) showReview(reviewLink.annotationId, reviewLink.tool, linkedLocus.page)
     if (!urlOpen && was && reviewOpenRef.current) {
       pushedReview.current = false
       setReviewOpen(false)
       setReviewToolInHand('select')
     }
-  }, [urlOpen, reviewLink.annotationId, reviewLink.tool, showReview, setReviewToolInHand])
+  }, [urlOpen, reviewLink.annotationId, reviewLink.tool, linkedLocus.page, showReview, setReviewToolInHand])
   /** Open the review from this pane: its state, and its address pushed. */
   const openReview = useCallback(
     (annotationId?: string, tool?: ReviewLinkTool) => {
@@ -753,7 +753,7 @@ export function useFilePreviewController(props: FilePreviewPaneProps) {
   const { locale } = useLocale()
   // Who is here, read off the room by membership: a pointer moving does not re-render this pane.
   const company = useRoomCompany(review.room)
-  const presenceNames = [...company.people.map((person) => person.name), ...(company.piloti ? ['Piloti'] : [])]
+  const presenceNames = [...company.people.map((person) => person.name), ...(company.agent ? ['Piloti'] : [])]
   const presenceSentence =
     presenceNames.length > 0
       ? t('annotations.peopleHere', {

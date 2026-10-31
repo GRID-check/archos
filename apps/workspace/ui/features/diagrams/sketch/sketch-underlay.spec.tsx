@@ -31,6 +31,27 @@ describe('UnderlayBanner', () => {
   })
 })
 
+describe('the way back to the page (slice 1)', () => {
+  it('opens the review of the document it lies on, at its page', () => {
+    wrap(<UnderlayBanner underlay={drifted} shown documentId="sketch" baseVersionId="s1" canMove onMoved={() => undefined} projectId="proj-1" />)
+    const back = screen.getByTestId('sketch-underlay-back')
+    expect(back.textContent).toBe('Zur Seite 2 der Fassung')
+    const href = new URL(back.getAttribute('href') ?? '', 'https://app.test')
+    expect(href.pathname).toBe('/app/projects/proj-1/files')
+    expect(Object.fromEntries(href.searchParams)).toEqual({ doc: REF.documentId, review: '1', page: '2' })
+  })
+
+  it('waits for the save while strokes are unsaved, and is not offered outside a project', () => {
+    const { unmount } = wrap(<UnderlayBanner underlay={drifted} shown documentId="sketch" baseVersionId="s1" canMove onMoved={() => undefined} projectId="proj-1" dirty />)
+    const back = screen.getByTestId('sketch-underlay-back') as HTMLButtonElement
+    expect(back.disabled).toBe(true)
+    expect(back.getAttribute('href')).toBeNull()
+    unmount()
+    wrap(<UnderlayBanner underlay={drifted} shown documentId="sketch" baseVersionId="s1" canMove onMoved={() => undefined} />)
+    expect(screen.queryByTestId('sketch-underlay-back')).toBeNull()
+  })
+})
+
 describe('UnderlayMoveDialog', () => {
   it('shows old and new, says how the page was found, and moves only on the person’s word', async () => {
     const move = vi.fn(async () => ({ versionNumber: 6 }))
