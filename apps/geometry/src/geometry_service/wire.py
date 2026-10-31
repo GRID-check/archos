@@ -148,9 +148,3 @@ class GeometryRequest(_Op):
 
     model_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")] = Field(alias="modelId")
     operation: GeometryOp
-    #: A diff's base model's own project (null: the office shelf), stated by the BFF after it passed
-    #: that model's read gate. Absent, the envelope's project is used for both models.
-    base_project_id: str | None = Field(default=None, alias="baseProjectId", max_length=64)
-
-    def base_scope(self, project_id: str | None) -> str | None:
-        return self.base_project_id if "base_project_id" in self.model_fields_set else project_id

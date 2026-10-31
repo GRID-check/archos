@@ -100,7 +100,7 @@ describe("geometry", () => {
     expect(c.livenessProbe.httpGet.path).toBe("/healthz");
     expect(c.image).toMatch(/-geometry:/);
     const names = c.env.map((e: { name: string }) => e.name);
-    expect(names).toEqual(expect.arrayContaining(["INTERNAL_API_TOKEN", "REDIS_URL", "FRONTEND_INTERNAL_URL", "PORT"]));
+    expect(names).toEqual(expect.arrayContaining(["INTERNAL_API_TOKEN", "REDIS_URL", "PORT"]));
     expect(spec.template.spec.securityContext.runAsNonRoot).toBe(true);
   });
 });

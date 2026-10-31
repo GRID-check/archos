@@ -16,6 +16,13 @@ vi.mock('./geometry-client', async (importActual) => ({
   ...(await importActual<typeof import('./geometry-client')>()),
   callGeometry: (...args: unknown[]) => callGeometry(...args),
 }))
+const getInternalModelSource = vi.fn(async (model: { id: string }) => ({
+  url: `http://store.internal/${model.id}`,
+  etag: `etag-${model.id}`,
+  bytes: 10,
+  expiresInSeconds: 600,
+}))
+vi.mock('./internal-access', () => ({ getInternalModelSource: (model: { id: string }) => getInternalModelSource(model) }))
 const actingReaderIsAgent = vi.fn(() => false)
 vi.mock('@/lib/agent-api/acting-session', () => ({ actingReaderIsAgent: () => actingReaderIsAgent() }))
 const recordGeometryTrace = vi.fn(async (..._args: unknown[]) => {})
@@ -31,12 +38,14 @@ const MODEL = '11111111-1111-4111-8111-111111111111'
 const BASE = '22222222-2222-4222-8222-222222222222'
 const GID = '2O2Fr$t4X7Zf8NOew3FLOH'
 const session = { userId: 'user_1', organizationId: 'org_1' } as AuthorizedSession
+const header = (id: string, projectId: string | null, status = 'ready') => ({ id, projectId, status, updatedAt: new Date('2026-10-01T00:00:00.000Z') })
+const signed = (id: string) => ({ url: `http://store.internal/${id}`, etag: `etag-${id}`, bytes: 10, updatedAt: '2026-10-01T00:00:00.000Z' })
 const answer = { op: 'boxes', result: { boxes: [] }, meta: { cacheTier: 'B', ms: 3, elements: 0, truncated: false } }
 
 beforeEach(() => {
   vi.clearAllMocks()
   actingReaderIsAgent.mockReturnValue(false)
-  getAccessibleModel.mockImplementation(async (_s: unknown, id: string) => ({ id, projectId: 'project_1' }))
+  getAccessibleModel.mockImplementation(async (_s: unknown, id: string) => header(id, 'project_1'))
   callGeometry.mockResolvedValue(answer)
 })
 
@@ -50,6 +59,7 @@ describe('geometryForAccessibleModel', () => {
       userId: 'user_1',
       projectId: 'project_1',
       traceId: expect.stringMatching(/^[0-9a-f]{32}$/),
+      sources: { [MODEL]: signed(MODEL) },
     })
     // The trace the service scores a cold build on is the one the BFF records the call on.
     expect(recordGeometryTrace).toHaveBeenCalledWith(
@@ -66,7 +76,7 @@ describe('geometryForAccessibleModel', () => {
   it('passes the gate for a diff’s base model too', async () => {
     getAccessibleModel.mockImplementation(async (_s: unknown, id: string) => {
       if (id === BASE) throw new NotFoundError('Model not found')
-      return { id, projectId: 'project_1' }
+      return header(id, 'project_1')
     })
     await expect(geometryForAccessibleModel(session, MODEL, { op: 'diff', baseModelId: BASE })).rejects.toMatchObject({ status: 404 })
     expect(callGeometry).not.toHaveBeenCalled()
@@ -82,10 +92,17 @@ describe('geometryForAccessibleModel', () => {
     expect(callGeometry).toHaveBeenCalledTimes(1)
   })
 
-  it('states a diff base model’s own project, which may differ from the model’s', async () => {
-    getAccessibleModel.mockImplementation(async (_s: unknown, id: string) => ({ id, projectId: id === BASE ? 'project_2' : 'project_1' }))
+  it('signs a diff base model’s own source, whichever project it is in', async () => {
+    getAccessibleModel.mockImplementation(async (_s: unknown, id: string) => header(id, id === BASE ? 'project_2' : 'project_1'))
     await geometryForAccessibleModel(session, MODEL, { op: 'diff', baseModelId: BASE })
-    expect(callGeometry.mock.calls[0]?.[2]).toMatchObject({ projectId: 'project_1', baseProjectId: 'project_2' })
+    expect(callGeometry.mock.calls[0]?.[2]).toMatchObject({ sources: { [MODEL]: signed(MODEL), [BASE]: signed(BASE) } })
+  })
+
+  it('answers 409 for a model still being read, and fetches nothing', async () => {
+    getAccessibleModel.mockResolvedValue(header(MODEL, 'project_1', 'extracting'))
+    await expect(geometryForAccessibleModel(session, MODEL, { op: 'warm' })).rejects.toMatchObject({ status: 409, code: 'model_not_ready' })
+    expect(getInternalModelSource).not.toHaveBeenCalled()
+    expect(callGeometry).not.toHaveBeenCalled()
   })
 
   it('lets the person’s viewer send a box', async () => {

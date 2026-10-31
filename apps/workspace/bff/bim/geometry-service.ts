@@ -20,11 +20,26 @@ import { recordGeometryTrace } from '@/lib/langfuse/geometry-trace'
 import { hexId } from '@/lib/langfuse/tool-call-trace'
 import { callGeometry, GeometryServiceError } from './geometry-client'
 import { type GeometryRequest, type GeometryResponse, usesRawCoordinates } from './geometry-wire'
+import { getInternalModelSource } from './internal-access'
 import { getAccessibleModel } from './model-service'
+import type { BimModelHeader } from './repository'
+import type { ModelSource } from './geometry-client'
 
 export const AGENT_COORDINATES_REFUSAL =
   'An agent searches around an element: use within with aroundGlobalId and margin, or near with globalId. ' +
   'A box or a point is for the person’s viewer.'
+
+/**
+ * The bytes of a model this session passed the read gate for, as the service will fetch them: the
+ * presigned internal URL and the store's identity. Built here, after the gate, so the service never
+ * re-resolves a model with a narrower scope (a restricted folder the person is cleared for, a base
+ * model in another project). A model not yet read answers 409 like the query route's.
+ */
+async function sourceOf(model: BimModelHeader, organizationId: string): Promise<ModelSource> {
+  if (model.status !== 'ready') throw new ApiError(409, 'model_not_ready', 'The model is still being read')
+  const source = await getInternalModelSource(model, organizationId)
+  return { url: source.url, etag: source.etag, bytes: source.bytes, updatedAt: new Date(model.updatedAt).toISOString() }
+}
 
 /** The client's refusal as the route's error: its status, and the service's code and retry hint. */
 function asApiError(error: GeometryServiceError): ApiError {
@@ -41,9 +56,11 @@ export async function geometryForAccessibleModel(
   if (reader === 'agent' && usesRawCoordinates(request)) throw new BadRequestError(AGENT_COORDINATES_REFUSAL)
 
   const model = await getAccessibleModel(session, modelId)
-  // A diff's base model passes its own gate and is resolved in its own project, which may differ.
+  // A diff's base model passes its own gate; its source is signed beside the model's.
   const base =
     request.op === 'diff' && request.baseModelId !== model.id ? await getAccessibleModel(session, request.baseModelId) : null
+  const sources: Record<string, ModelSource> = { [model.id]: await sourceOf(model, session.organizationId) }
+  if (base) sources[base.id] = await sourceOf(base, session.organizationId)
 
   const startedAt = Date.now()
   const traceId = hexId()
@@ -54,7 +71,7 @@ export async function geometryForAccessibleModel(
       userId: session.userId,
       projectId: model.projectId,
       traceId,
-      ...(request.op === 'diff' ? { baseProjectId: (base ?? model).projectId } : {}),
+      sources,
     })
     void recordGeometryTrace({
       ...trace,

@@ -1,7 +1,7 @@
 """The geometry service: its route's credentials and refusals, the element index cache and the builds.
 
 The engine is faked at its one adapter (``geometry_service.engine``), the model source at
-``agent.knowledge.ifc_spatial_client`` (resolve and open), and the shared cache runs on its
+``agent.knowledge.ifc_spatial_client`` (open), the BFF's signed sources are built here, and the shared cache runs on its
 per-process fallback. ``test_engine_contract.py`` runs the real engine through the same adapter.
 """
 
@@ -25,6 +25,8 @@ from geometry_service.app import GEOMETRY_PATH
 from geometry_service.app import create_app
 from geometry_service.engine import EngineRefusal
 from geometry_service.errors import GeometryWarming
+from geometry_service.signed_sources import SOURCES_HEADER
+from geometry_service.signed_sources import SOURCES_SIG_HEADER
 
 from agent.common import cache
 from agent.common.envelope_auth import ENVELOPE_HEADER
@@ -96,19 +98,25 @@ class FakeEngine(engine.GeometryEngine):
 
 
 class Source:
-    """The BFF's source route and the model download, counted, with the scope each resolve asked for."""
+    """The model download, counted; ``body`` is a source as the BFF signs it."""
 
     def __init__(self) -> None:
         self.etag = "etag-1"
         self.downloads = 0
-        self.resolved: list[tuple[str, str | None, str]] = []
         self.resident: set[str] = set()
         self.gate = threading.Event()
         self.gate.set()
         self.fail: Exception | None = None
 
-    def resolve(self, *, organization_id, project_id, model_id=None, model_name=None):
-        self.resolved.append((organization_id, project_id, model_id))
+    def signed(self, model_id: str) -> dict:
+        return {
+            "url": f"http://store.internal/{model_id}",
+            "etag": f"{model_id}:{self.etag}",
+            "bytes": 10,
+            "updatedAt": "t",
+        }
+
+    def body(self, model_id: str) -> dict:
         return {
             "resolved": True,
             "model": {"modelId": model_id, "updatedAt": "t"},
@@ -138,7 +146,7 @@ def fake(monkeypatch):
     cache.reset_local_store()
     index_cache.memo_clear()
     source = Source()
-    monkeypatch.setattr(spatial, "resolve_model_source", source.resolve)
+    monkeypatch.setattr(spatial, "resolve_model_source", lambda **_: pytest.fail("the service resolved a model itself"))
     monkeypatch.setattr(spatial, "open_model", source.open_model)
     monkeypatch.setattr(spatial, "resident_model", source.resident_model)
     scored: list[tuple[str | None, int]] = []
@@ -164,9 +172,23 @@ def _envelope(payload: dict) -> dict[str, str]:
     }
 
 
-def _headers(**override: Any) -> dict[str, str]:
+def _signed(models: tuple[str, ...], payload: dict, secret: str = SECRET) -> dict[str, str]:
+    """The BFF's signed sources for ``models``, bound to ``payload``'s organization, user and issuedAt."""
+    sources = {
+        m: {"url": f"http://store.internal/{m}", "etag": f"{m}:etag-1", "bytes": 10, "updatedAt": "t"} for m in models
+    }
+    raw = json.dumps({**{k: payload.get(k) for k in ("organizationId", "userId", "issuedAt")}, "sources": sources})
+    return {
+        SOURCES_HEADER: base64.urlsafe_b64encode(raw.encode()).decode().rstrip("="),
+        SOURCES_SIG_HEADER: hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest(),
+    }
+
+
+def _headers(models: tuple[str, ...] = (MODEL, BASE), bound: dict | None = None, **override: Any) -> dict[str, str]:
     payload = {"organizationId": "org", "userId": "user", "projectId": "project", "issuedAt": int(time.time() * 1000)}
-    return {"x-internal-token": SECRET, "x-trace-id": TRACE, **_envelope({**payload, **override})}
+    payload = {**payload, **override}
+    signed = _signed(models, {**payload, **(bound or {})})
+    return {"x-internal-token": SECRET, "x-trace-id": TRACE, **_envelope(payload), **signed}
 
 
 def _post(body: dict, headers: dict[str, str] | None = None):
@@ -184,26 +206,46 @@ def _wait_for(condition, seconds: float = 5.0) -> None:
 
 
 class TestCredentials:
-    def test_without_an_envelope_it_is_403_and_nothing_is_resolved(self, fake):
+    def test_without_an_envelope_it_is_403_and_nothing_is_fetched(self, fake):
         source, _, _ = fake
         response = _post(_boxes(), {"x-internal-token": SECRET})
         assert response.status_code == 403
         assert response.json()["detail"]["error"] == "context_envelope_required"
-        assert source.resolved == []
+        assert source.downloads == 0
 
     def test_without_the_token_it_is_403(self, fake):
-        response = _post(
-            _boxes(), _envelope({"organizationId": "o", "userId": "u", "issuedAt": int(time.time() * 1000)})
-        )
-        assert response.status_code == 403
+        headers = _headers()
+        del headers["x-internal-token"]
+        assert _post(_boxes(), headers).status_code == 403
 
     def test_an_envelope_without_a_user_is_403(self, fake):
         assert _post(_boxes(), _headers(userId=None)).status_code == 403
 
-    def test_the_envelope_s_organization_and_project_reach_the_resolve(self, fake):
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            lambda: {k: v for k, v in _headers().items() if k != SOURCES_HEADER},
+            lambda: {**_headers(), SOURCES_SIG_HEADER: "0" * 64},
+            lambda: _headers(bound={"userId": "someone-else"}),
+            lambda: _headers(bound={"issuedAt": 1}),
+            lambda: _headers(models=(BASE,)),
+        ],
+        ids=["no-sources", "forged", "another-user", "another-request", "not-this-model"],
+    )
+    def test_only_a_source_the_bff_signed_for_this_request_and_model_is_fetched(self, fake, headers):
         source, _, _ = fake
-        assert _post(_boxes(), _headers(organizationId="org_7", projectId="project_9")).status_code == 200
-        assert source.resolved == [("org_7", "project_9", MODEL)]
+        response = _post(_boxes(), headers())
+        assert (response.status_code, response.json()["code"]) == (403, "source_not_signed")
+        assert source.downloads == 0
+
+    def test_the_signed_source_is_what_is_fetched_and_nothing_is_resolved(self, fake, monkeypatch):
+        seen: list[dict] = []
+        source, _, _ = fake
+        original = source.open_model
+        monkeypatch.setattr(spatial, "open_model", lambda body: seen.append(body) or original(body))
+        assert _post(_boxes()).status_code == 200
+        assert seen[0]["source"]["url"] == f"http://store.internal/{MODEL}"
+        assert seen[0]["source"]["etag"] == f"{MODEL}:etag-1"
 
     def test_the_probes(self, fake):
         client = TestClient(create_app())
@@ -224,7 +266,7 @@ class TestOperations:
 
     def test_a_tier_b_hit_downloads_nothing_and_the_memo_spares_the_second_read(self, fake):
         source, adapter, _ = fake
-        key = index_cache.index_key(MODEL, source.resolve(organization_id="org", project_id=None, model_id=MODEL))
+        key = index_cache.index_key(MODEL, source.body(MODEL))
         cache.set_json(key, json.dumps({"schema": 1, "boxes": {GID: [[0, 0, 0], [1, 1, 1]]}}), 60)
         assert _post(_boxes()).json()["meta"]["cacheTier"] == "B"
         assert _post(_boxes()).json()["meta"]["cacheTier"] == "B"
@@ -232,7 +274,7 @@ class TestOperations:
 
     def test_a_poisoned_tier_b_entry_is_deleted_and_rebuilt(self, fake):
         source, adapter, _ = fake
-        key = index_cache.index_key(MODEL, source.resolve(organization_id="org", project_id=None, model_id=MODEL))
+        key = index_cache.index_key(MODEL, source.body(MODEL))
         cache.set_json(key, json.dumps({"schema": 99}), 60)
         response = _post(_boxes())
         assert response.status_code == 200, response.text
@@ -305,19 +347,15 @@ class TestOperations:
         (_, budget), *_ = fake[1].calls
         assert 0 < budget <= operations.REQUEST_BUDGET_SECONDS
 
-    def test_diff_resolves_the_base_model_in_the_scope_the_bff_stated(self, fake):
+    def test_diff_reads_the_base_model_from_its_own_signed_source(self, fake):
         source, adapter, _ = fake
-        body = {"modelId": MODEL, "baseProjectId": "project_base", "operation": {"op": "diff", "baseModelId": BASE}}
-        response = _post(body)
+        response = _post({"modelId": MODEL, "operation": {"op": "diff", "baseModelId": BASE}})
         assert response.json()["result"]["value"]["elements"][0]["status"] == "unchanged"
-        assert source.resolved == [("org", "project", MODEL), ("org", "project_base", BASE)]
-        assert adapter.builds == 2
-
-    def test_an_unresolved_model_is_404_and_one_still_being_read_is_409(self, fake, monkeypatch):
-        answers = iter([{"resolved": False, "reason": "not_found"}, {"resolved": False, "reason": "not_ready"}])
-        monkeypatch.setattr(spatial, "resolve_model_source", lambda **_: next(answers))
-        assert _post({"modelId": MODEL, "operation": {"op": "warm"}}).status_code == 404
-        assert _post({"modelId": MODEL, "operation": {"op": "warm"}}).json()["code"] == "model_not_ready"
+        assert (adapter.builds, source.downloads) == (2, 2)
+        unsigned = _post(
+            {"modelId": MODEL, "operation": {"op": "diff", "baseModelId": BASE}}, _headers(models=(MODEL,))
+        )
+        assert unsigned.status_code == 403
 
     def test_no_operation_starts_without_budget_left(self, fake, monkeypatch):
         monkeypatch.setattr(operations, "REQUEST_BUDGET_SECONDS", 0.5)
@@ -329,15 +367,15 @@ class TestOperations:
 class TestBuilds:
     def test_the_key_changes_with_the_etag(self, fake):
         source, _, _ = fake
-        first = index_cache.index_key(MODEL, source.resolve(organization_id="o", project_id=None, model_id=MODEL))
+        first = index_cache.index_key(MODEL, source.body(MODEL))
         source.etag = "etag-2"
-        second = index_cache.index_key(MODEL, source.resolve(organization_id="o", project_id=None, model_id=MODEL))
+        second = index_cache.index_key(MODEL, source.body(MODEL))
         assert first != second
         assert first.startswith(f"ifc:index:v1:{MODEL}:")
 
     def test_concurrent_callers_share_one_build(self, fake):
         source, adapter, _ = fake
-        body = source.resolve(organization_id="o", project_id=None, model_id=MODEL)
+        body = source.body(MODEL)
         key = index_cache.index_key(MODEL, body)
         source.gate.clear()
         results: list[Any] = []
@@ -356,7 +394,7 @@ class TestBuilds:
 
     def test_a_lock_held_elsewhere_means_wait_not_build(self, fake):
         source, adapter, _ = fake
-        body = source.resolve(organization_id="o", project_id=None, model_id=MODEL)
+        body = source.body(MODEL)
         key = index_cache.index_key(MODEL, body)
         assert cache.set_if_absent(f"{key}:lock", json.dumps("another-replica"), 60)
         with pytest.raises(GeometryWarming):
@@ -365,7 +403,7 @@ class TestBuilds:
 
     def test_a_lapsed_lock_is_taken_over(self, fake):
         source, adapter, _ = fake
-        body = source.resolve(organization_id="o", project_id=None, model_id=MODEL)
+        body = source.body(MODEL)
         key = index_cache.index_key(MODEL, body)
         assert cache.set_if_absent(f"{key}:lock", json.dumps("dead-replica"), 0.2)
         index, tier = builds.load_index(key, body, time.monotonic() + 3)
@@ -375,7 +413,7 @@ class TestBuilds:
         source, _, _ = fake
         monkeypatch.setattr(builds, "BUILD_LOCK_SECONDS", 0.3)
         monkeypatch.setattr(builds, "HEARTBEAT_SECONDS", 0.05)
-        body = source.resolve(organization_id="o", project_id=None, model_id=MODEL)
+        body = source.body(MODEL)
         key = index_cache.index_key(MODEL, body)
         source.gate.clear()
         builds.warm(MODEL, body)
@@ -400,7 +438,7 @@ class TestBuilds:
         source, _, _ = fake
         monkeypatch.setattr(builds, "MAX_QUEUED_BUILDS", 1)
         source.gate.clear()
-        builds.warm(MODEL, source.resolve(organization_id="o", project_id=None, model_id=MODEL))
+        builds.warm(MODEL, source.body(MODEL))
         response = _post({"modelId": BASE, "operation": {"op": "warm"}})
         assert (response.status_code, response.json()["code"]) == (503, "geometry_busy")
         source.gate.set()

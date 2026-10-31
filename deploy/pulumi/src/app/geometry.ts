@@ -8,7 +8,7 @@ import { onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { ROLLOUT, gracefulShutdown, secretChecksumAnnotations, surgeRollout } from "../platform/rollout";
 import { AppSecrets, AppWiring, langfuseApiEnv, sref } from "./config";
-import { PORT, UID } from "../constants";
+import { UID } from "../constants";
 
 /** Where `python -m geometry_service` binds (`PORT`). Kept here, not in `constants.ts`, beside its only users. */
 export const GEOMETRY_PORT = 8100;
@@ -24,8 +24,8 @@ export const GEOMETRY_URL = `http://${GEOMETRY_NAME}:${GEOMETRY_PORT}`;
 /**
  * The geometry pod's own ingress rule (rule 21 of `network-policies.ts`): the frontend alone, the
  * BFF being its one caller, instead of the blanket same-namespace allow it is withheld from. Egress
- * stays open, as for every app pod: it reaches the BFF, Dragonfly, the object store's presigned URL
- * and Langfuse.
+ * stays open, as for every app pod: it reaches Dragonfly, the object store's presigned URL (the BFF
+ * signs it into each request) and Langfuse.
  */
 export function geometryFrontendOnly(
   mk: (name: string, spec: k8s.types.input.networking.v1.NetworkPolicySpec) => k8s.networking.v1.NetworkPolicy,
@@ -63,8 +63,6 @@ export function geometryEnv(cfg: DeployConfig): EnvVar[] {
     sref("INTERNAL_API_TOKEN"),
     // Tier B, the element index (authenticated: the URL carries the password).
     sref("REDIS_URL"),
-    // The model's source is resolved through the BFF (`/api/internal/bim/source`).
-    { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
     // Scores a cold build on the BFF's trace (`geometry-cold-ms`); nothing when Langfuse is off.
     ...langfuseApiEnv(cfg),
   ];
@@ -74,8 +72,8 @@ export function geometryEnv(cfg: DeployConfig): EnvVar[] {
  * The geometry service (ADR-0149, `apps/geometry`): element boxes, proximity, rooms, clashes and
  * box diffs over IFC models. Cluster-internal only: a ClusterIP Service and no route, because the
  * BFF's geometry route is its one caller and every agent reaches it through the door. It holds no
- * access rules of its own; it checks the internal token and the signed envelope and resolves the
- * model through the BFF with the envelope's scope.
+ * access rules of its own; it checks the internal token and the signed envelope, and fetches only
+ * the model sources the BFF signed after its read gate.
  *
  * Its own Deployment so a parsed model's memory (20x to 140x the file) is sized here and never on
  * the api pods. It scales by replicas; the element index lives in the shared cache, so any replica

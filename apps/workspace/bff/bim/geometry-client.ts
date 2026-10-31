@@ -15,7 +15,7 @@
 import 'server-only'
 import { getGeometryServiceUrl } from '@/lib/backend-url'
 import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
-import { buildRequestContextEnvelopeHeaders } from '@/lib/request-context'
+import { buildRequestContextEnvelopeHeaders, signRequestContextEnvelope } from '@/lib/request-context'
 import type { GeometryRequest, GeometryResponse } from './geometry-wire'
 
 /**
@@ -52,13 +52,43 @@ export class GeometryServiceError extends Error {
   }
 }
 
+/** One model's bytes as the service fetches them, after the BFF's read gate let the caller through. */
+export interface ModelSource {
+  /** Presigned GET against the internal store endpoint, short-lived. */
+  url: string
+  /** The store's content identity; with `updatedAt`, the service's cache key. */
+  etag: string | null
+  bytes: number | null
+  updatedAt: string
+}
+
+/**
+ * The header pair carrying the sources, signed like the envelope (HMAC-SHA256 with the internal
+ * token over the raw JSON) and bound to it: the same organization, user and `issuedAt`. The service
+ * fetches no URL it did not receive this way (`geometry_service/signed_sources.py`).
+ */
+export const SOURCES_HEADER = 'x-model-sources'
+export const SOURCES_SIG_HEADER = 'x-model-sources-sig'
+
+/** The signed sources headers. Pure. */
+export function signedSourcesHeaders(
+  payload: { organizationId: string; userId: string; issuedAt: number; sources: Record<string, ModelSource> },
+  secret: string
+): Record<string, string> {
+  const json = JSON.stringify(payload)
+  return {
+    [SOURCES_HEADER]: Buffer.from(json, 'utf8').toString('base64url'),
+    [SOURCES_SIG_HEADER]: signRequestContextEnvelope(json, secret),
+  }
+}
+
 export interface GeometryCaller {
   organizationId: string
   userId: string
   /** The model's project; null for an office-shelf model. Rides in the signed envelope. */
   projectId: string | null
-  /** A diff's base model's own project (null: the office shelf), after it passed its own read gate. */
-  baseProjectId?: string | null
+  /** Each model's bytes, by model id: the model's, and a diff's base model's. */
+  sources: Record<string, ModelSource>
   /** The `bim-geometry` trace this call is recorded on; the service scores a cold build there. */
   traceId?: string
 }
@@ -117,8 +147,13 @@ export async function callGeometry(
     console.warn(`[geometry] ${error.message}`)
     throw new GeometryServiceError('The geometry service is not configured', 503, 'geometry_unavailable')
   }
+  const issuedAt = Date.now()
   const envelope = buildRequestContextEnvelopeHeaders(
-    { organizationId: caller.organizationId, userId: caller.userId, projectId: caller.projectId, issuedAt: Date.now() },
+    { organizationId: caller.organizationId, userId: caller.userId, projectId: caller.projectId, issuedAt },
+    secret
+  )
+  const signedSources = signedSourcesHeaders(
+    { organizationId: caller.organizationId, userId: caller.userId, issuedAt, sources: caller.sources },
     secret
   )
 
@@ -131,13 +166,10 @@ export async function callGeometry(
         accept: 'application/json',
         ...(caller.traceId ? { 'x-trace-id': caller.traceId } : {}),
         ...envelope,
+        ...signedSources,
         ...tokenHeaders,
       },
-      body: JSON.stringify({
-        modelId,
-        operation,
-        ...(caller.baseProjectId !== undefined ? { baseProjectId: caller.baseProjectId } : {}),
-      }),
+      body: JSON.stringify({ modelId, operation }),
       cache: 'no-store',
       redirect: 'error',
       signal: AbortSignal.timeout(GEOMETRY_TIMEOUT_MS),

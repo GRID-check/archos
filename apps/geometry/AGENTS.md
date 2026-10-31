@@ -13,5 +13,5 @@ the door's `bim-model-geometry` operation. Probes: `/healthz`, `/readyz`. Run it
 |---|---|---|
 | Call the engine (`ifc_spatial`) | Go through `geometry_service/engine.py`, the one adapter | Review; a second call site is a second contract to wire at every engine change |
 | Change the request body | Change `wire.py` and `apps/workspace/bff/bim/geometry-wire.ts` together, limits included | The BFF validates first; a limit only one side knows is a 422 nobody can explain |
-| Decide who may read a model | Do not, here. The BFF route decides; this service checks the internal token and the signed envelope (`agent.common.envelope_auth`) and resolves the model with the envelope's scope | A second access rule drifts from the documents' read gate |
+| Decide who may read a model | Do not, here. The BFF route decides; this service checks the internal token and the signed envelope (`agent.common.envelope_auth`) and fetches only the model sources the BFF signed beside it (`signed_sources.py`), never resolving a model itself | A second access rule drifts from the documents' read gate |
 | Reach the BFF, the cache or the model bytes | Reuse `agent.common.bff_http`, `agent.common.cache` and `agent.knowledge.ifc_spatial_client` | A copy of the download forks its memory admission and its guard |

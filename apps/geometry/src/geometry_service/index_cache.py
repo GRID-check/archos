@@ -1,10 +1,11 @@
 """Model resolution, the element index's cache keys, Tier B, its in-process memo and the failure window.
 
 The geometry service (ADR-0149) answers the operations the BFF route
-``POST /api/bim/models/{id}/geometry`` and the agent door (``bim-model-geometry``) offer. The
-model's bytes come the way ``ifc_measure``'s do, through :mod:`agent.knowledge.ifc_spatial_client`
-(the BFF's ``/api/internal/bim/source``, its download guard and its memory admission:
-``ModelTooLargeError`` refuses a model this pod cannot hold before it is parsed), reused, not copied.
+``POST /api/bim/models/{id}/geometry`` and the agent door (``bim-model-geometry``) offer. The BFF
+signs each model's presigned internal URL and store identity into the request after its read gate
+(``signed_sources.py``); the bytes are fetched by :mod:`agent.knowledge.ifc_spatial_client` (its
+download guard and its memory admission: ``ModelTooLargeError`` refuses a model this pod cannot hold
+before it is parsed), reused, not copied.
 
 ## The tiers
 
@@ -27,8 +28,8 @@ reason, so a model that cannot be read is not downloaded again by every caller i
 
 ## Tenancy
 
-A key names a model id the BFF just resolved for this caller (``/api/internal/bim/source`` with the
-scope the BFF stated); a caller who may not see the model never reaches the key. The index holds
+A key names a model id whose source the BFF signed for this caller after its read gate; a caller
+who may not see the model never reaches the key. The index holds
 geometry and GlobalIds, never names or property values.
 """
 
@@ -45,7 +46,6 @@ from agent.knowledge import ifc_spatial_client as spatial
 
 from . import engine
 from .errors import GeometryBuildFailed
-from .errors import GeometryModelUnresolved
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +56,6 @@ INDEX_TTL_SECONDS = 30 * 24 * 3600
 FAILURE_TTL_SECONDS = 300
 #: The in-process memo of parsed indexes, by the size of their JSON. About 100 B an element.
 MEMO_MAX_BYTES = 64 * 1024 * 1024
-
-
-def resolve(organization_id: str, project_id: str | None, model_id: str) -> dict[str, Any]:
-    """The model's source body from the BFF, within the stated scope, or :class:`GeometryModelUnresolved`."""
-    body = spatial.resolve_model_source(organization_id=organization_id, project_id=project_id, model_id=model_id)
-    if body.get("resolved") is not True:
-        raise GeometryModelUnresolved(str(body.get("reason") or "not_found"), str(body.get("message") or ""))
-    return body
 
 
 def index_key(model_id: str, source: dict[str, Any]) -> str:

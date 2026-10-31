@@ -40,12 +40,8 @@ class GeometryTimeout(Exception):
     """The request's budget ran out before the operation could start."""
 
 
-class GeometryModelUnresolved(Exception):
-    """The BFF answered ``resolved: false``: no such model here, or it is not ready yet."""
-
-    def __init__(self, reason: str, message: str) -> None:
-        super().__init__(message)
-        self.reason = reason
+class GeometryUnsigned(Exception):
+    """The request names a model whose source the BFF did not sign: nothing is fetched."""
 
 
 class GeometryRequestError(ValueError):

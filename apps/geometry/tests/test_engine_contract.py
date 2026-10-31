@@ -144,7 +144,6 @@ def test_every_route_operation_runs_through_the_service_on_the_real_engine(monke
     cache.reset_local_store()
     index_cache.memo_clear()
     body = {"resolved": True, "model": {"modelId": "m", "updatedAt": "t"}, "source": {"etag": "house"}}
-    monkeypatch.setattr(spatial, "resolve_model_source", lambda **_: body)
     monkeypatch.setattr(spatial, "open_model", lambda source: "house")
     monkeypatch.setattr(spatial, "resident_model", lambda source: house)
     model_id = "11111111-1111-4111-8111-111111111111"
@@ -160,9 +159,8 @@ def test_every_route_operation_runs_through_the_service_on_the_real_engine(monke
         {"op": "warm"},
     ]:
         started = time.monotonic()
-        outcome = operations.run(
-            GeometryRequest.model_validate({"modelId": model_id, "operation": operation}), "org", None
-        )
+        request = GeometryRequest.model_validate({"modelId": model_id, "operation": operation})
+        outcome = operations.run(request, {model_id: body})
         assert outcome.op == operation["op"]
         assert isinstance(outcome.result["value"], dict), operation
         assert time.monotonic() - started < operations.REQUEST_BUDGET_SECONDS

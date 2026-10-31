@@ -230,7 +230,6 @@ The service (ADR-0149) reads these; it adds no variable of its own beyond `GEOME
 |---|---|---|---|
 | `INTERNAL_API_TOKEN` | Yes | — | The same token as the backend's: it checks the BFF's `x-internal-token` and verifies the signed request-context envelope with it (`agent.common.envelope_auth`). Unset, every request is refused and `/readyz` answers 503. |
 | `REDIS_URL` | No | _(unset: per-process cache)_ | The shared cache (Dragonfly) holding the element index (`ifc:index:v1:<model>:<source>`, 30 days) and its build lock. Unset, each replica keeps its own index and builds it again. |
-| `FRONTEND_INTERNAL_URL` | No | `http://frontend:3000` | Where the service resolves a model's source (`/api/internal/bim/source`), as the backend does. |
 | `BIM_SPATIAL_MAX_MODEL_BYTES` | No | derived | The memory admission the backend's `ifc_measure` uses (see its row): a model this pod cannot hold is refused as 413 `model_too_large`, before it is parsed. |
 | `HOST`, `PORT` | No | `0.0.0.0`, `8100` | Where `python -m geometry_service` binds. |
 | `LOG_LEVEL` | No | `INFO` | One JSON object a line; each call logs a `geometry_call` line with its `record_ifc_call` facts. |

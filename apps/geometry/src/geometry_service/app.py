@@ -5,9 +5,9 @@ signed request-context envelope names. Two credentials, the ones every internal 
 carries, checked by the shared code in :mod:`agent.common.envelope_auth`:
 
 * the internal token says the caller is the BFF;
-* the envelope says who asked, in which organization and project. The model is resolved through
-  the BFF's ``/api/internal/bim/source`` with exactly that scope, so this service reaches no model
-  the caller's BFF route did not already authorize. It holds no access rules of its own.
+* the envelope says who asked; the signed model sources beside it (``signed_sources.py``) say
+  which bytes the BFF let this person read, after its own read gate. This service fetches nothing
+  else and holds no access rules of its own.
 
 A cold model is built in the background; the request waits at most
 :data:`operations.WAIT_SECONDS` and is then answered ``409 {code: 'geometry_warming',
@@ -43,10 +43,13 @@ from . import engine
 from . import operations
 from .errors import GeometryBuildFailed
 from .errors import GeometryBusy
-from .errors import GeometryModelUnresolved
 from .errors import GeometryRequestError
 from .errors import GeometryTimeout
+from .errors import GeometryUnsigned
 from .errors import GeometryWarming
+from .signed_sources import SOURCES_HEADER
+from .signed_sources import SOURCES_SIG_HEADER
+from .signed_sources import verified_sources
 from .trace import call_facts
 from .trace import log_call
 from .trace import model_handle
@@ -71,8 +74,8 @@ def _refuse(status: int, code: str, message: str, **extra: Any) -> JSONResponse:
     return JSONResponse(status_code=status, content={"code": code, "error": message, **extra}, headers=headers)
 
 
-def _authorize(request: Request) -> tuple[str, str | None, str]:
-    """(organization, project, user) from the verified envelope, or an HTTPException."""
+def _authorize(request: Request) -> dict[str, dict[str, Any]]:
+    """The signed model sources, bound to the verified envelope, or an HTTPException."""
     refusal = internal_token_refusal(request.headers.get)
     if refusal is not None:
         raise HTTPException(status_code=refusal[0], detail=refusal[1])
@@ -85,13 +88,15 @@ def _authorize(request: Request) -> tuple[str, str | None, str]:
             status_code=403,
             detail={"error": "context_envelope_required", "detail": "a signed, current request-context envelope"},
         )
-    return str(context.organization_id), context.project_id, str(context.user_id)
+    return verified_sources(request.headers.get(SOURCES_HEADER), request.headers.get(SOURCES_SIG_HEADER), context)
 
 
 def _failure(exc: Exception) -> JSONResponse:
     """The refusal a failure is, in the shape the BFF's geometry client maps."""
     if isinstance(exc, GeometryWarming):
         return _refuse(409, "geometry_warming", "The model's geometry is being prepared", retryAfter=exc.retry_after)
+    if isinstance(exc, GeometryUnsigned):
+        return _refuse(403, "source_not_signed", str(exc))
     if isinstance(exc, GeometryBusy):
         return _refuse(503, "geometry_busy", "The geometry service is busy", retryAfter=exc.retry_after)
     if isinstance(exc, GeometryTimeout):
@@ -99,10 +104,6 @@ def _failure(exc: Exception) -> JSONResponse:
     if isinstance(exc, GeometryBuildFailed):
         status, code = _BUILD_FAILURES.get(exc.kind, (502, "build_failed"))
         return _refuse(status, code, exc.args[0] or "The model's geometry could not be built")
-    if isinstance(exc, GeometryModelUnresolved):
-        if exc.reason == "not_ready":
-            return _refuse(409, "model_not_ready", "The model is still being read")
-        return _refuse(404, "model_not_found", "Model not found")
     if isinstance(exc, ModelTooLargeError):
         return _refuse(413, "model_too_large", str(exc))
     if isinstance(exc, BimQueryRejectedError):
@@ -133,12 +134,12 @@ def create_app() -> FastAPI:
 
     @app.post(GEOMETRY_PATH)
     async def geometry(body: GeometryRequest, request: Request) -> Any:
-        organization_id, project_id, _user = _authorize(request)
+        sources = _authorize(request)
         op = body.operation.op
         try:
             trace = request.headers.get(TRACE_HEADER, "")
             trace_id = trace if _TRACE_ID.match(trace) else None
-            outcome = await asyncio.to_thread(operations.run, body, organization_id, project_id, trace_id)
+            outcome = await asyncio.to_thread(operations.run, body, sources, trace_id)
         except Exception as exc:  # noqa: BLE001 - every failure is mapped to a refusal
             response = _failure(exc)
             log_call(ifc_op=op, ifc_outcome=f"http_{response.status_code}", ifc_model=model_handle(body.model_id))

@@ -62,10 +62,13 @@ Chosen option 3.
   then answered `409 geometry_warming` with `retryAfter` while the build carries on.
 * **The BFF routes are the only caller.** `POST /api/bim/models/{id}/geometry` passes the model's
   document read gate (`getAccessibleModel`, and again for a diff's base model), then calls the
-  service with the internal token and a signed request-context envelope naming the person and the
-  model's project. The service has **no access control of its own beyond that envelope**: it
-  resolves the model through the BFF's `/api/internal/bim/source` with exactly the envelope's
-  scope, so it can reach no model the BFF route did not already authorize.
+  service with the internal token, a signed request-context envelope naming the person, and the
+  **model sources** it just authorized: each model's presigned internal URL and store identity
+  (ETag, `updatedAt`), signed like the envelope (HMAC with the internal token) and bound to it (the
+  same organization, user and `issuedAt`). The service has **no access control of its own beyond
+  that**: it fetches no URL it did not receive this way and never re-resolves a model, so its view
+  is exactly the person's, restricted folders they are cleared for and a diff's base model in
+  another project included. The cache key is still the model id and the source identity.
 * **One agent door, no native tools at the end.** The capability is the catalog operation
   `bim-model-geometry`, offered to outside agents and to Piloti alike. An agent searches around an
   element (`aroundGlobalId`, `globalId`); a raw box or point is accepted only from the person's
@@ -86,13 +89,12 @@ Chosen option 3.
 * Bad: the service image carries the agent package's dependency closure for the few modules it
   imports (measured: 84 MB resident after import). Lifting the cache, the BFF client and the model
   download into a small shared package would drop it; that is the follow-up, not a blocker.
-* Bad: a model is resolved by id within the scope the BFF states, its project or the office shelf,
-  and a diff's base model within its own; a model attached to a private chat (`scope = 'session'`)
-  is not found by the service yet.
-* Bad: the internal resolve hides every model under a restricted folder (ADR-0087), whatever the
-  person's grants, because it receives no grants: a person cleared for a restricted folder passes
-  the BFF's read gate and then gets 404 from the service for a model filed there. Passing the
-  reader's cleared folders into `/api/internal/bim/source` is the fix; it is not built.
+* Neutral: the BFF presigns a URL and asks the store for the ETag on every call, also when the
+  index is already cached (a HEAD and a local signature); the alternative, letting the service
+  resolve on its own, would decide access a second time with fewer facts (no folder clearance, no
+  conversation grant), which is the drift this decision avoids.
+* Bad: a held upload's model (ADR-0086) gets no source: the byte path reads screened files only, so
+  its uploader is answered 404 until screening passes.
 * Neutral: off by default (`geometryEnabled`); off, the route answers 503 and nothing else changes.
 
 ### Confirmation
@@ -100,8 +102,12 @@ Chosen option 3.
 * `apps/geometry/tests/test_geometry_service.py`: no envelope, no token or no user is a 403 and
   nothing is resolved; a Tier B hit downloads nothing; concurrent callers share one build; a lock
   held elsewhere waits; past the wait the answer is 409 `geometry_warming`.
-* `bff/bim/geometry-service.spec.ts`: the read gate runs before the service is called, for a
-  diff's base model too, and an agent's raw coordinate is refused.
+* `bff/bim/geometry-service.spec.ts` and `geometry-service.folder-access.spec.ts`: the read gate
+  runs before the service is called (for a diff's base model too); a person cleared for a
+  restricted folder gets the model's geometry, one not cleared is refused before any URL is
+  presigned; an agent's raw coordinate is refused.
+* `apps/geometry/tests/test_geometry_service.py`: only a source signed for this request, this person
+  and this model is fetched; the service never resolves a model itself.
 * `exposure.config.spec.ts` and `tests/fixtures/exposure.json`: `bim-model-geometry` is offered to
   both audiences, `ifc-query` is withheld. Nothing yet fails a new native geometry tool.
 

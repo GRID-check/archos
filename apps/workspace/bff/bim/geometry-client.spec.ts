@@ -6,10 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import { callGeometry, GeometryServiceError, geometryError } from './geometry-client'
+import { createHmac } from 'node:crypto'
+import { callGeometry, GeometryServiceError, geometryError, SOURCES_HEADER, SOURCES_SIG_HEADER } from './geometry-client'
 
 const MODEL = '11111111-1111-4111-8111-111111111111'
-const caller = { organizationId: 'org_1', userId: 'user_1', projectId: 'project_1' }
+const SOURCE = { url: 'http://store.internal/m', etag: 'e1', bytes: 10, updatedAt: '2026-10-01T00:00:00.000Z' }
+const caller = { organizationId: 'org_1', userId: 'user_1', projectId: 'project_1', sources: { [MODEL]: SOURCE } }
 const fetchMock = vi.fn()
 
 beforeEach(() => {
@@ -29,18 +31,23 @@ const json = (status: number, body: unknown) => new Response(JSON.stringify(body
 describe('callGeometry', () => {
   it('posts the operation with the token and a signed envelope, and refuses redirects', async () => {
     fetchMock.mockResolvedValue(json(200, { op: 'warm', result: { status: 'warming' }, meta: { cacheTier: 'cold', ms: 1, elements: 0, truncated: false } }))
-    const answer = await callGeometry(MODEL, { op: 'warm' }, { ...caller, traceId: 'd'.repeat(32), baseProjectId: null })
+    const answer = await callGeometry(MODEL, { op: 'warm' }, { ...caller, traceId: 'd'.repeat(32) })
     expect(answer.result).toEqual({ status: 'warming' })
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }]
     expect(url).toBe('http://geometry:8100/v1/internal/bim/geometry')
     expect(init.redirect).toBe('error')
     expect(init.signal).toBeInstanceOf(AbortSignal)
-    expect(JSON.parse(String(init.body))).toEqual({ modelId: MODEL, operation: { op: 'warm' }, baseProjectId: null })
+    expect(JSON.parse(String(init.body))).toEqual({ modelId: MODEL, operation: { op: 'warm' } })
     expect(init.headers['x-trace-id']).toBe('d'.repeat(32))
     expect(init.headers['x-internal-token']).toBe('test-token')
     const envelope = JSON.parse(Buffer.from(init.headers['X-Request-Context'] as string, 'base64url').toString())
     expect(envelope).toMatchObject({ organizationId: 'org_1', userId: 'user_1', projectId: 'project_1' })
     expect(init.headers['X-Request-Context-Sig']).toMatch(/^[0-9a-f]{64}$/)
+    // The sources ride signed beside the envelope and bound to it: the same person, organization and issuedAt.
+    const raw = Buffer.from(init.headers[SOURCES_HEADER] as string, 'base64url').toString()
+    const signed = JSON.parse(raw)
+    expect(signed).toEqual({ organizationId: 'org_1', userId: 'user_1', issuedAt: envelope.issuedAt, sources: { [MODEL]: SOURCE } })
+    expect(init.headers[SOURCES_SIG_HEADER]).toBe(createHmac('sha256', 'test-token').update(raw, 'utf8').digest('hex'))
   })
 
   it('answers 503 without a service URL and sends nothing', async () => {

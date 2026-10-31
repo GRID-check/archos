@@ -23,6 +23,7 @@ from .errors import CacheTier
 from .errors import GeometryOutcome
 from .errors import GeometryRequestError
 from .errors import GeometryTimeout
+from .errors import GeometryUnsigned
 from .wire import BoxesOp
 from .wire import ClashOp
 from .wire import DiffOp
@@ -106,17 +107,25 @@ def _remaining(end: float) -> float:
     return left
 
 
+def _source(sources: dict[str, dict[str, Any]], model_id: str) -> dict[str, Any]:
+    source = sources.get(model_id)
+    if source is None:
+        raise GeometryUnsigned(f"no signed source for model {model_id}")
+    return source
+
+
 def _answer(
-    request: GeometryRequest, source: dict[str, Any], scope: tuple[str, str | None], end: float, trace: str | None
+    request: GeometryRequest, sources: dict[str, dict[str, Any]], end: float, trace: str | None
 ) -> tuple[dict[str, Any], CacheTier]:
     op = request.operation
+    source = _source(sources, request.model_id)
     wait_until = min(time.monotonic() + WAIT_SECONDS, end - MIN_OPERATION_SECONDS)
     if isinstance(op, (InRoomOp, NeighboursOp, ClashOp)):
         model, tier = builds.load_model(source, wait_until, trace)
         return _resident_op(op, model, _remaining(end)), tier
     index, tier = builds.load_index(index_cache.index_key(request.model_id, source), source, wait_until, trace)
     if isinstance(op, DiffOp):
-        base_source = index_cache.resolve(scope[0], request.base_scope(scope[1]), op.base_model_id)
+        base_source = _source(sources, op.base_model_id)
         base_key = index_cache.index_key(op.base_model_id, base_source)
         base_index, base_tier = builds.load_index(base_key, base_source, wait_until, trace)
         _remaining(end)
@@ -125,26 +134,22 @@ def _answer(
     return _index_op(op, index), tier
 
 
-def run(
-    request: GeometryRequest, organization_id: str, project_id: str | None, trace_id: str | None = None
-) -> GeometryOutcome:
+def run(request: GeometryRequest, sources: dict[str, dict[str, Any]], trace_id: str | None = None) -> GeometryOutcome:
     """Answer one operation within :data:`REQUEST_BUDGET_SECONDS`.
 
     Raises :class:`GeometryWarming` past the wait (the build carries on), :class:`GeometryTimeout`
-    when no budget is left to start the operation, :class:`GeometryModelUnresolved` for a model the
-    caller cannot reach, and :class:`GeometryRequestError` for a request the engine refuses.
+    when no budget is left to start the operation, :class:`GeometryUnsigned` for a model the BFF did
+    not sign a source for, and :class:`GeometryRequestError` for a request the engine refuses.
     """
     started = time.monotonic()
     op = request.operation
     try:
-        source = index_cache.resolve(organization_id, project_id, request.model_id)
         if isinstance(op, WarmOp):
-            status = builds.warm(request.model_id, source, trace_id)
+            status = builds.warm(request.model_id, _source(sources, request.model_id), trace_id)
             result: dict[str, Any] = {"value": {"status": status}}
             tier: CacheTier = "B" if status == "ready" else "cold"
         else:
-            scope = (organization_id, project_id)
-            result, tier = _answer(request, source, scope, started + REQUEST_BUDGET_SECONDS, trace_id)
+            result, tier = _answer(request, sources, started + REQUEST_BUDGET_SECONDS, trace_id)
     except EngineRefusal as exc:
         raise GeometryRequestError(str(exc)) from None
     return GeometryOutcome(

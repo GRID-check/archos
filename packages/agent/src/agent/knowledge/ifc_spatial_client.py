@@ -204,7 +204,6 @@ def resolve_model_source(
     organization_id: str,
     project_id: str | None,
     model_name: str | None = None,
-    model_id: str | None = None,
 ) -> dict[str, Any]:
     """Ask the BFF which model this is, and where its bytes are.
 
@@ -225,8 +224,6 @@ def resolve_model_source(
         payload["projectId"] = project_id
     if model_name:
         payload["modelName"] = model_name
-    if model_id:
-        payload["modelId"] = model_id
 
     try:
         parsed = bff_http.post_json("/api/internal/bim/source", payload, timeout=_RESOLVE_TIMEOUT_SECONDS)
