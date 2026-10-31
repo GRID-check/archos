@@ -59,6 +59,8 @@ export const annotationViewpoints = pgTable(
     snapshotKey: text('snapshot_key'),
     snapshotContentType: text('snapshot_content_type'),
     snapshotBytes: integer('snapshot_bytes'),
+    /** The viewpoint this one was carried from, on this document or on the one it replaced (migration 0195). */
+    carriedFromId: uuid('carried_from_id'),
     createdBy: text('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -75,6 +77,18 @@ export const annotationViewpoints = pgTable(
       foreignColumns: [documentVersions.id],
     }).onDelete('set null'),
     documentIdx: index('idx_annotation_viewpoints_document').on(table.documentId),
+    carriedFromFk: foreignKey({
+      name: 'annotation_viewpoints_carried_from_fkey',
+      columns: [table.carriedFromId],
+      foreignColumns: [table.id],
+    }).onDelete('set null'),
+    carriedFromIdx: index('idx_annotation_viewpoints_carried_from')
+      .on(table.carriedFromId)
+      .where(sql`${table.carriedFromId} IS NOT NULL`),
+    carriedFromOther: check(
+      'annotation_viewpoints_carried_from_other',
+      sql`${table.carriedFromId} IS NULL OR ${table.carriedFromId} <> ${table.id}`
+    ),
     organizationIdx: index('idx_annotation_viewpoints_organization_id').on(table.organizationId),
     cameraKindKnown: check(
       'annotation_viewpoints_camera_kind_known',

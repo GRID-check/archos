@@ -222,11 +222,11 @@ export const documentAnnotations = pgTable(
     ),
     anchorViewpointIs3d: check(
       'document_annotations_anchor_viewpoint_is_3d',
-      sql`${table.anchorKind} <> 'viewpoint' OR (${table.viewpointId} IS NOT NULL AND ${table.page} IS NULL AND ${table.shape} IS NULL AND ${table.x} IS NULL AND ${table.y} IS NULL AND ${table.w} IS NULL AND ${table.h} IS NULL AND ${table.anchorElementIds} IS NULL AND ${table.anchorLostAt} IS NULL)`
+      sql`${table.anchorKind} <> 'viewpoint' OR (${table.viewpointId} IS NOT NULL AND ${table.page} IS NULL AND ${table.shape} IS NULL AND ${table.x} IS NULL AND ${table.y} IS NULL AND ${table.w} IS NULL AND ${table.h} IS NULL AND ${table.anchorElementIds} IS NULL)`
     ),
     anchorLostNeedsAnchor: check(
       'document_annotations_anchor_lost_needs_anchor',
-      sql`${table.anchorLostAt} IS NULL OR ${table.anchorElementIds} IS NOT NULL`
+      sql`${table.anchorLostAt} IS NULL OR ${table.anchorElementIds} IS NOT NULL OR ${table.viewpointId} IS NOT NULL`
     ),
   })
 )

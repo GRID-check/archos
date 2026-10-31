@@ -124,6 +124,7 @@ const row = (n: number, overrides: Partial<AnnotationViewpointRow> = {}): Annota
   snapshotKey: `x/_bim/viewpoints/${uuid(100 + n)}.png`,
   snapshotContentType: 'image/png',
   snapshotBytes: PNG.length,
+  carriedFromId: null,
   createdBy: 'user_anna',
   createdAt: new Date('2026-10-29T08:00:00.000Z'),
   ...overrides,
