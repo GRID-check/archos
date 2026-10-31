@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geometry"
+version = "0.1.0"
+description = "The geometry service: element boxes, proximity, rooms, clashes and box diffs over IFC models (ADR-0149)"
+requires-python = ">=3.14,<3.15"
+license = {text = "Apache-2.0"}
+dependencies = [
+    # The shared substrate: the shared cache, the BFF client, the model source download and its
+    # memory admission, and the inbound token and envelope checks. Reused, not copied (ADR-0149).
+    "agent",
+    "fastapi>=0.156.8",
+    "uvicorn>=0.30",
+    "pydantic>=2.0.0",
+]
+# The engine (`packages/ifc-spatial-py`) is installed by the image on its own, as the backend
+# image does, because it keeps its own uv.lock (packages/AGENTS.md).
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -72,6 +72,8 @@ class Image:
 
 IMAGES = (
     Image("backend", context=".", dockerfile="apps/agent-host/Dockerfile", target="release"),
+    # The geometry service (ADR-0149): its own image, built from the root like the backend's.
+    Image("geometry", context=".", dockerfile="apps/geometry/Dockerfile", target="release"),
     Image("frontend", context="apps/workspace", dockerfile="apps/workspace/deploy/Dockerfile"),
     Image("web", context="apps/website", dockerfile="apps/website/Dockerfile"),
 )

@@ -17,7 +17,7 @@ vars:
   TESTMON_PATHS:
     map:
       core: tests/ packages/agent/tests/ evals/
-      api: apps/agent-host/tests/
+      api: apps/agent-host/tests/ apps/geometry/tests/
       sources: packages/knowledge-layer packages/ris-adapter packages/tavily-web-search --dist loadfile
 
 tasks:
@@ -342,7 +342,7 @@ tasks:
   be:test:api:
     desc: agent_host plugin suite
     cmds:
-      - '{{.PY}} -X faulthandler -m pytest apps/agent-host/tests/ -q {{.XDIST}}'
+      - '{{.PY}} -X faulthandler -m pytest apps/agent-host/tests/ apps/geometry/tests/ -q {{.XDIST}}'
 
   be:verify:
     desc: Everything CI runs for the backend tier

@@ -37,6 +37,8 @@
 backend:
   - 'packages/agent/**'
   - 'apps/agent-host/**'
+  # The geometry service (ADR-0149): its tests run in the api suite.
+  - 'apps/geometry/**'
   # The eval harnesses and their tests: `be:test:ci` runs `evals/` beside
   # `tests/`, so a harness-only change must still run the backend suite.
   # It used to arrive here via the `retrieval` filter; that filter is gone

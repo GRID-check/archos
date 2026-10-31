@@ -108,6 +108,8 @@ def repo(mod, tmp_path, monkeypatch):
         tmp_path,
         {
             "apps/agent-host/Dockerfile": "FROM debian\nCOPY src/ ./src/\nCOPY pyproject.toml ./\n",
+            "apps/geometry/Dockerfile": "FROM debian\nCOPY apps/geometry/ ./apps/geometry/\n",
+            "apps/geometry/app.py": "print(1)\n",
             "src/app.py": "print(1)\n",
             "pyproject.toml": "[project]\n",
             "apps/workspace/deploy/Dockerfile": "FROM node\nCOPY . .\n",
@@ -129,7 +131,9 @@ def test_only_an_input_change_renames_the_image(mod, repo):
     write(repo, {"src/app.py": "print(2)\n"})
     after = mod.hashes("HEAD", week=WEEK)
     assert after["backend"] != before["backend"]
-    assert {k: after[k] for k in ("frontend", "web")} == {k: before[k] for k in ("frontend", "web")}
+    assert {k: after[k] for k in ("geometry", "frontend", "web")} == {
+        k: before[k] for k in ("geometry", "frontend", "web")
+    }
 
 
 def test_a_new_week_renames_every_image_so_base_images_are_refreshed(mod, repo):
@@ -158,7 +162,7 @@ def test_a_pull_request_builds_the_images_it_changes(mod, repo):
     build, images = mod.plan_pull_request(moved, week=WEEK)
 
     assert [entry["name"] for entry in build] == ["frontend"]
-    assert [entry["name"] for entry in images] == ["backend", "frontend", "web"]
+    assert [entry["name"] for entry in images] == ["backend", "geometry", "frontend", "web"]
     assert build[0]["repository"] == "grid-oib-frontend" and build[0]["context"] == "apps/workspace"
     assert mod.plan_pull_request(base, week=WEEK)[0] == build
 
@@ -181,11 +185,11 @@ def test_a_pull_request_that_moves_an_image_builds_it(mod, repo):
 @pytest.mark.parametrize(
     ("answers", "expected"),
     [
-        ({"backend": True, "frontend": True, "web": True}, []),
-        ({"backend": True, "frontend": False, "web": True}, ["frontend"]),
+        ({"backend": True, "geometry": True, "frontend": True, "web": True}, []),
+        ({"backend": True, "geometry": True, "frontend": False, "web": True}, ["frontend"]),
         # The registry could not say: build. An extra build costs minutes; a
         # skipped one ships the wrong code.
-        ({"backend": None, "frontend": True, "web": True}, ["backend"]),
+        ({"backend": None, "geometry": True, "frontend": True, "web": True}, ["backend"]),
     ],
 )
 def test_a_push_builds_what_the_registry_does_not_have(mod, repo, answers, expected):
@@ -199,4 +203,4 @@ def test_a_push_builds_what_the_registry_does_not_have(mod, repo, answers, expec
 
     assert [entry["name"] for entry in build] == expected
     hashes = mod.hashes("HEAD", week=WEEK)
-    assert asked == [(name, f"inputs-{hashes[name]}") for name in ("backend", "frontend", "web")]
+    assert asked == [(name, f"inputs-{hashes[name]}") for name in ("backend", "geometry", "frontend", "web")]
