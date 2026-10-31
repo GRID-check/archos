@@ -678,3 +678,39 @@ class TestCounters:
         facts = cache.CacheCounters(shared_hits=2, local_misses=1).as_facts()
         assert facts["cache_shared_hits"] == 2
         assert facts["cache_local_misses"] == 1
+
+
+class TestSingleFlightLock:
+    """`set_if_absent` / `delete_if_equal`: one owner at a time, released only by that owner."""
+
+    def test_the_local_fallback_admits_one_owner_and_releases_only_its_own(self, monkeypatch):
+        cache.reset_local_store()
+        monkeypatch.setattr(cache, "_get_client", lambda: None)
+
+        assert cache.set_if_absent("lock:a", "first", 60) is True
+        assert cache.set_if_absent("lock:a", "second", 60) is False
+        cache.delete_if_equal("lock:a", "second")
+        assert cache.set_if_absent("lock:a", "third", 60) is False
+        cache.delete_if_equal("lock:a", "first")
+        assert cache.set_if_absent("lock:a", "third", 60) is True
+
+    def test_the_shared_store_is_asked_with_nx_and_a_ttl(self, monkeypatch):
+        calls: list[dict] = []
+
+        class _NxClient:
+            def set(self, key, value, **kwargs):
+                calls.append({"key": key, **kwargs})
+                return None if len(calls) > 1 else True
+
+        monkeypatch.setattr(cache, "_get_client", lambda: _NxClient())
+
+        assert cache.set_if_absent("lock:b", "x", 120) is True
+        assert cache.set_if_absent("lock:b", "y", 120) is False
+        assert calls[0] == {"key": "lock:b", "nx": True, "px": 120_000}
+
+    @pytest.mark.parametrize("exc", [RedisConnectionError("refused"), ResponseError("WRONGTYPE")])
+    def test_a_store_error_never_grants_the_lock(self, monkeypatch, exc):
+        monkeypatch.setattr(cache, "_get_client", lambda: _FailingClient(exc))
+        monkeypatch.setattr(cache, "_mark_client_failed", lambda: None)
+
+        assert cache.set_if_absent("lock:c", "x", 120) is False

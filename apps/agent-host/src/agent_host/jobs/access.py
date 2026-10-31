@@ -17,6 +17,7 @@ from sqlalchemy.engine import Connection
 from agent.auth import Principal
 from agent.auth import get_current_principal
 from agent.common.db_utils import ensure_schema
+from agent.common.envelope_auth import REQUEST_CONTEXT_MAX_AGE_MS
 from agent.common.db_utils import present_columns
 from agent.common.db_utils import present_indexes
 from agent.common.source_kinds import is_office_shelf_collection
@@ -395,7 +396,7 @@ def derive_project_collection(collection_scope: list[str] | None) -> str | None:
 #: How long a signed envelope may authorize a job request, in milliseconds.
 #: The BFF verifier's window, ``REQUEST_CONTEXT_MAX_AGE_MS`` in
 #: ``apps/workspace/bff/request-context.ts``. The two must stay equal.
-JOB_ENVELOPE_MAX_AGE_MS = 6 * 60 * 60 * 1000
+JOB_ENVELOPE_MAX_AGE_MS = REQUEST_CONTEXT_MAX_AGE_MS
 
 #: What a request does to a job. A ``read`` follows it (status, stream, state,
 #: report, the listing); a ``control`` steers it (cancel, write-now, documents).

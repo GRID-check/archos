@@ -10,56 +10,24 @@ identical to the original ``routes.maintenance`` guard (which re-exports these
 names for backwards compatibility).
 """
 
-import hmac
-import logging
-import os
-
 from fastapi import HTTPException
 from fastapi import Request
 
-logger = logging.getLogger(__name__)
+from agent.common.envelope_auth import _DEV_APP_ENVS  # noqa: F401 - re-exported for maintenance.py
+from agent.common.envelope_auth import DEV_DEFAULT_TOKEN as _DEV_DEFAULT_TOKEN
+from agent.common.envelope_auth import TOKEN_HEADERS as _TOKEN_HEADERS
+from agent.common.envelope_auth import internal_token_refusal
 
-# Well-known default shipped in docker-compose for local development. It must
-# never authenticate anything outside a dev environment.
-_DEV_DEFAULT_TOKEN = "grid-internal-dev-token"
-_DEV_APP_ENVS = {"development", "dev", "local"}
-
-#: Both spellings of the internal-token header, in the order they are tried.
-#:
-#: This guard read ``x-internal-token`` ONLY, while every caller in the repo —
-#: the BFF's skill submit and model-config fetch, and each of the nine Python
-#: clients under ``packages/agent/src/agent`` — sends ``x-grid-internal-token``. So the
-#: routes this guard protects rejected every real request with a 403. Nothing
-#: caught it because the two sides are tested separately and each test pinned
-#: its own spelling, and because the ASGI envelope middleware
-#: (``context_envelope._INTERNAL_TOKEN_HEADER_NAMES``) already accepts both —
-#: so a request got far enough to look healthy before the route guard refused
-#: it. Accepting both here matches that middleware and the sibling guard in
-#: ``routes/config_info.py``.
-_TOKEN_HEADERS: tuple[str, ...] = ("x-grid-internal-token", "x-internal-token")
+__all__ = ["_DEV_APP_ENVS", "_DEV_DEFAULT_TOKEN", "_TOKEN_HEADERS", "_require_internal_token"]
 
 
 def _require_internal_token(request: Request) -> None:
-    token = os.environ.get("INTERNAL_API_TOKEN")
-    if not token:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    app_env = os.environ.get("APP_ENV", "production").lower()
-    if token == _DEV_DEFAULT_TOKEN and app_env not in _DEV_APP_ENVS:
-        logger.error(
-            "INTERNAL_API_TOKEN is the well-known dev default "
-            "('%s') but APP_ENV=%s is not a dev environment - refusing to "
-            "serve internal requests. Set a real token in the deployment "
-            "environment.",
-            _DEV_DEFAULT_TOKEN,
-            app_env,
-        )
-        raise HTTPException(status_code=503, detail="Internal API disabled")
-    # Constant-time compare: a plain != leaks the token via response timing.
-    # Every candidate header is compared even after one matches, so the number
-    # of comparisons does not depend on which spelling the caller used.
-    matched = False
-    for name in _TOKEN_HEADERS:
-        provided = request.headers.get(name) or ""
-        matched |= hmac.compare_digest(provided, token)
-    if not matched:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    """Refuse a request without the internal token; the check itself is ``agent.common.envelope_auth``.
+
+    Lifted there so the geometry service (ADR-0149) guards its route with the same code. Both
+    header spellings are accepted: every caller in the repo sent the legacy spelling while this
+    guard once read only the new one, and every real request got a 403.
+    """
+    refusal = internal_token_refusal(request.headers.get)
+    if refusal is not None:
+        raise HTTPException(status_code=refusal[0], detail=refusal[1])

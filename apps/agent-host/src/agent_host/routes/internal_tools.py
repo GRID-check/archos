@@ -28,8 +28,6 @@ single writer of ``app`` (ADR-0003) and a person gates it.
 from __future__ import annotations
 
 import logging
-import os
-import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -43,6 +41,7 @@ from pydantic import ValidationError
 from pydantic_core import to_jsonable_python
 
 from agent.common.backend_tools import is_backend_read_tool
+from agent.common.envelope_auth import verified_envelope_context
 from agent.common.grounding_block import strip_trace_lanes
 from agent.project_context import ORGANIZATION_ID_HEADER
 from agent.project_context import PROJECT_ID_HEADER
@@ -51,7 +50,6 @@ from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from agent.project_context import USER_ID_HEADER
 from agent.project_context import RequestContext
 
-from ..jobs.access import JOB_ENVELOPE_MAX_AGE_MS
 from .builder_state import get_active_builder
 from .internal_auth import _require_internal_token
 
@@ -73,23 +71,16 @@ class ToolCall(BaseModel):
 def _verified_context(request: Request) -> RequestContext:
     """The envelope's context, or a 403 saying why there is none.
 
-    The bar every reader that trusts the envelope holds it to (``jobs.access.verified_envelope``):
-    signed with the shared secret, naming the user and the organization, and inside the
-    BFF verifier's window in both directions. Here no user is asserted by the caller, so the
-    envelope names the user it speaks for.
+    The bar is ``agent.common.envelope_auth.verified_envelope_context``, shared with the geometry
+    service (ADR-0149): signed with the shared secret, naming the user and the organization, and
+    inside the BFF verifier's window in both directions. Here no user is asserted by the caller, so
+    the envelope names the user it speaks for.
     """
-    secret = os.environ.get("INTERNAL_API_TOKEN")
-    context = RequestContext.from_envelope(
+    context = verified_envelope_context(
         request.headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         request.headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-        secret,
     )
-    fresh = (
-        context is not None
-        and context.issued_at is not None
-        and abs(int(time.time() * 1000) - context.issued_at) <= JOB_ENVELOPE_MAX_AGE_MS
-    )
-    if not secret or context is None or not fresh or not context.user_id or not context.organization_id:
+    if context is None:
         raise HTTPException(
             status_code=403,
             detail={"error": "context_envelope_required", "detail": "a signed, current request-context envelope"},

@@ -434,6 +434,43 @@ def delete(key: str) -> bool:
     return True
 
 
+def set_if_absent(key: str, value: str, ttl_seconds: float) -> bool:
+    """``SET key value NX PX ttl``: True when this call wrote the key, False when it was there.
+
+    The single-flight lock's primitive: of every replica that asks at once, exactly
+    one is told True. On a store error the answer is False, so a broken store
+    never lets every replica start the same expensive build at once; without a
+    shared store the per-process map answers, which is single-flight per process.
+    """
+    client = _get_client()
+    if client is not None:
+        try:
+            return bool(client.set(key, value, nx=True, px=int(ttl_seconds * 1000)))
+        except Exception as exc:
+            _on_store_error("setnx", key, exc)
+            return False
+    with _local_lock:
+        entry = _local_store.get(key)
+        if entry is not None and time.monotonic() < entry[0]:
+            return False
+    _local_set(key, value, ttl_seconds)
+    return True
+
+
+_DELETE_IF_EQUAL_LUA = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0"
+
+
+def delete_if_equal(key: str, value: str) -> None:
+    """Drop ``key`` only while it still holds ``value``: release a lock this caller owns, never a successor's."""
+    if _get_client() is not None:
+        eval_script(_DELETE_IF_EQUAL_LUA, [key], [value])
+        return
+    with _local_lock:
+        entry = _local_store.get(key)
+        if entry is not None and entry[1] == value:
+            _local_store.pop(key, None)
+
+
 def _repair_window_ttl(client: Any, key: str, window_seconds: int, cause: BaseException) -> None:
     """Give a fixed-window counter a TTL when the pipelined ``EXPIRE`` was dropped.
 

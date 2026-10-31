@@ -17,6 +17,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
 SEAM = Path("packages/agent/src/agent/common/bff_http.py")
+#: The inbound twin: the one check of the internal token a service receives (ADR-0149).
+INBOUND_SEAM = Path("packages/agent/src/agent/common/envelope_auth.py")
 
 #: Where the agent tier calls the BFF from. ``knowledge_layer`` is its own
 #: package, imported by the ingest worker, and must not depend on ``agent``;
@@ -28,8 +30,9 @@ PATTERNS = {
     "redirect_guard": re.compile(r"class \w+\([^)]*HTTPRedirectHandler"),
     # The base-URL read, whatever fallback chain it spells.
     "base_url": re.compile(r"FRONTEND_INTERNAL_URL"),
-    # The service-token header, in any case. Inbound checks live in agent_host, so
-    # this one is held only in the agent package.
+    # The service-token header, in any case. Held only in the agent package, where the
+    # inbound check has one home, `common/envelope_auth.py` (INBOUND_SEAM), shared by
+    # agent_host and the geometry service (ADR-0149).
     "token_header": re.compile(r"x-(?:grid-)?internal-token", re.IGNORECASE),
 }
 TOKEN_HEADER_TREES = ("packages/agent/src/agent",)
@@ -81,7 +84,7 @@ def _counts(pattern_name: str) -> dict[str, int]:
     for tree in trees:
         for path in sorted((ROOT / tree).rglob("*.py")):
             relative = path.relative_to(ROOT)
-            if relative == SEAM:
+            if relative == SEAM or (pattern_name == "token_header" and relative == INBOUND_SEAM):
                 continue
             hits = len(pattern.findall(path.read_text(encoding="utf-8")))
             if hits:

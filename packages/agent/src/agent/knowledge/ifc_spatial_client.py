@@ -204,6 +204,7 @@ def resolve_model_source(
     organization_id: str,
     project_id: str | None,
     model_name: str | None = None,
+    model_id: str | None = None,
 ) -> dict[str, Any]:
     """Ask the BFF which model this is, and where its bytes are.
 
@@ -224,6 +225,8 @@ def resolve_model_source(
         payload["projectId"] = project_id
     if model_name:
         payload["modelName"] = model_name
+    if model_id:
+        payload["modelId"] = model_id
 
     try:
         parsed = bff_http.post_json("/api/internal/bim/source", payload, timeout=_RESOLVE_TIMEOUT_SECONDS)
@@ -554,6 +557,14 @@ def call_spatial_tool(handle: str, name: str, args: dict[str, Any]) -> Any:
         raise SpatialToolError(str(exc)) from None
 
 
+def resident_model(result: dict[str, Any]) -> Any | None:
+    """The parsed model for a resolved source if this process holds it now (Tier A), else None. No I/O."""
+    with _LOCK:
+        handle = _HANDLE_BY_SOURCE.get(source_identity(result))
+        cache = _CACHE if handle in _OPEN_HANDLES else None
+    return cache.get(handle) if cache is not None and handle else None
+
+
 def reset_cache_for_tests() -> None:
     """Forget every parsed model, handle and source identity."""
     global _CACHE, _TOOLS
@@ -577,6 +588,7 @@ __all__ = [
     "call_spatial_tool",
     "open_model",
     "reset_cache_for_tests",
+    "resident_model",
     "resolve_model_source",
     "source_identity",
 ]
