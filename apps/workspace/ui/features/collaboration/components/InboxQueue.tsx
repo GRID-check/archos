@@ -201,9 +201,15 @@ export function InboxQueue({ enabled = true, returnHere = true, keyScope = 'page
       )}
 
       {loading ? (
-        <div className="space-y-2" aria-busy="true" data-testid="inbox-queue-skeleton">
+        // The shape of what is coming: a heading, then rows of a title and its
+        // line, so the list lands where the skeleton stood instead of reflowing.
+        <div className="space-y-4 px-2" aria-busy="true" data-testid="inbox-queue-skeleton">
+          <Skeleton className="h-3 w-28" />
           {[0, 1, 2].map((index) => (
-            <Skeleton key={index} className="h-20 w-full rounded-surface" />
+            <div key={index} className="space-y-1.5">
+              <Skeleton className="h-3.5 w-4/5" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
           ))}
         </div>
       ) : (
