@@ -337,7 +337,7 @@ export const collaboration = {
     /** The inbox beside the page: close it, and the way to every entry. */
     dock: {
       close: 'Close the inbox',
-      all: 'All entries',
+      all: 'All entries and the archive',
     },
     /** Nav entry + the count badge. */
     navLabel: 'Inbox',
@@ -393,8 +393,7 @@ export const collaboration = {
     queue: {
       waiting: 'Waiting on you',
       news: 'News',
-      summary: '{count, plural, one {# is waiting on you} other {# are waiting on you}}',
-      late: '{count} of them overdue',
+      late: '{count} overdue',
       nothingWaiting: 'Nothing is waiting on you.',
       newsRead: 'Mark as read',
       chat: 'Chat',
@@ -446,7 +445,7 @@ export const collaboration = {
     empty: {
       needsMeTitle: 'All caught up',
       needsMeDescription:
-        'What is new or waiting on you appears here. What you have already read is under “All”.',
+        'Anything new shows up here as it arrives.',
       allTitle: 'Your inbox is empty',
       allDescription: 'News from your team and from {productName} appears here.',
       archivedTitle: 'Nothing archived',

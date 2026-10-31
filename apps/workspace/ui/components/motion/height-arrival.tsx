@@ -35,18 +35,22 @@ export const HeightArrival = ({
   children,
   className,
   testId,
+  as = 'div',
 }: {
   children: ReactNode
   /** Classes for the frame itself; put spacing here rather than on the child. */
   className?: string
   testId?: string
+  /** `li` for a row of a list, so the list keeps its semantics while its rows come and go. */
+  as?: 'div' | 'li'
 }) => {
+  const Frame = as === 'li' ? motion.li : motion.div
   const enter = useMotionToken(motionDeliberateEntrance)
   const exit = useMotionToken(motionQuickExit)
   const [animating, setAnimating] = useState(false)
   return (
     // eslint-disable-next-line grid/motion-vocabulary -- the shared arrival primitive: a block arriving below the reading point
-    <motion.div
+    <Frame
       data-testid={testId}
       className={cn('flex flex-col', animating && 'overflow-hidden', className)}
       initial={{ height: 0, opacity: 0 }}
@@ -57,7 +61,7 @@ export const HeightArrival = ({
       onAnimationComplete={() => setAnimating(false)}
     >
       {children}
-    </motion.div>
+    </Frame>
   )
 }
 

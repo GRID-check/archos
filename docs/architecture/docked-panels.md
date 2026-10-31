@@ -34,12 +34,25 @@ The file peek beside the chat is the same primitive at the other edge
    `startDock={{ inbox: …, yourPanel: canSee ? <YourDock /> : undefined }}`.
    The shell never imports a feature; a panel the reader may not open is absent.
 4. **Give it a door.** The link that already leads to the list's own page
-   takes `useStartDockDoor('yourPanel')`: `onClick` on the link and
-   `aria-expanded={door.open}`. Never mark it active; active is the page the
-   reader is on.
-5. **Keep its keys to itself.** Docked beside a page with keys of its own (the
-   review's C, P, Escape), the list listens only while focus is inside it (the
-   Postfach's `keyScope="self"`).
+   takes `useStartDockDoor('yourPanel')`: `onClick` on the link,
+   `aria-expanded={door.open}` and `data-dock-door={door.panel}`. Never mark it
+   active; active is the page the reader is on.
+5. **Make it a disclosure.** Opened by the reader, the panel takes the focus
+   (`takesFocus` in the store, cleared with `focusTaken()` once it has), so its
+   keys work at once; restored after a reload it leaves the focus with the
+   page. Escape and its close button put it away and hand the focus back to
+   the door (`focusStartDockDoor`, which finds the door by its
+   `data-dock-door`). Give the panel's root `tabIndex={-1}` so a click on its
+   background focuses it too.
+6. **Keep its keys to itself.** Docked beside a page with keys of its own (the
+   review's C, P, Escape), the list listens only while focus is inside the
+   panel: mark the root `data-queue-keys` and the Postfach's
+   `keyScope="self"` listens anywhere inside it.
+7. **Let it arrive, not jump.** Fade the panel's content in from a few pixels
+   off its edge (`motionEntrance`); never animate the panel's width, which
+   would re-lay out the page beside it on every frame. Rows that come and go
+   take their height (`HeightArrival as="li"` inside
+   `<AnimatePresence initial={false}>`).
 
 Below `lg` (`DOCK_LAYOUT_QUERY`) nothing docks: the door follows its link to
 the list's own page, and an entry opens in its place.

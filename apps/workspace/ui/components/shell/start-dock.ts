@@ -56,6 +56,13 @@ const local = (): Storage => window.localStorage
 interface StartDockState {
   panel: StartDockPanel | null
   width: number
+  /**
+   * The reader opened the panel just now, so it should take the focus (its
+   * keys work at once). A panel restored after a reload never takes it: the
+   * page the reader came back to keeps it. The panel clears it once it has.
+   */
+  takesFocus: boolean
+  focusTaken: () => void
   open: (panel: StartDockPanel) => void
   close: () => void
   toggle: (panel: StartDockPanel) => void
@@ -69,12 +76,14 @@ interface StartDockState {
 export const useStartDock = create<StartDockState>()((set, get) => ({
   panel: null,
   width: START_DOCK_WIDTH_DEFAULT,
+  takesFocus: false,
+  focusTaken: () => set({ takesFocus: false }),
   open: (panel) => {
-    set({ panel })
+    set({ panel, takesFocus: true })
     write(session, OPEN_KEY, panel)
   },
   close: () => {
-    set({ panel: null })
+    set({ panel: null, takesFocus: false })
     write(session, OPEN_KEY, null)
   },
   toggle: (panel) => (get().panel === panel ? get().close() : get().open(panel)),
@@ -104,6 +113,8 @@ export const defaultStartDockWidth = (): number => START_DOCK_WIDTH_DEFAULT
  * reader is on.
  */
 export interface StartDockDoor {
+  /** The panel it opens; a door says so as `data-dock-door`, which is how a closing panel finds it. */
+  panel: StartDockPanel
   open: boolean
   onClick: (event: { defaultPrevented: boolean; button: number; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; preventDefault: () => void }) => void
 }
@@ -120,6 +131,7 @@ export function useStartDockDoor(panel: StartDockPanel): StartDockDoor {
   const open = useStartDock((state) => state.panel === panel) && fits
   const toggle = useStartDock((state) => state.toggle)
   return {
+    panel,
     open,
     onClick: (event) => {
       const plain = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
@@ -150,3 +162,14 @@ export function useStartDockShown(): boolean {
  */
 export const PAGE_INSET_START_VAR = '--page-inset-start'
 export const PAGE_INSET_TOP_VAR = '--page-inset-top'
+
+/**
+ * Gives the focus back to the door a panel was opened from, as a disclosure
+ * does when it closes: the visible one, since the rail's and the header's
+ * doors can both be in the page with one of them hidden.
+ */
+export function focusStartDockDoor(panel: StartDockPanel): void {
+  const doors = document.querySelectorAll<HTMLElement>(`[data-dock-door="${panel}"]`)
+  const shown = [...doors].find((door) => door.getClientRects().length > 0)
+  shown?.focus({ preventScroll: true })
+}

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@/test-utils'
+import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
 
 import type { InboxItemView } from '@/lib/inbox/types'
 
@@ -117,7 +117,8 @@ describe('InboxQueue — what waits on the reader, and the news', () => {
     expect(within(groups[0]).getByTestId('inbox-queue-due')).toHaveTextContent('Overdue')
     // An unread request is waiting, not news.
     expect(within(screen.getByTestId('inbox-queue-news')).getAllByTestId('inbox-queue-entry')).toHaveLength(1)
-    expect(screen.getByTestId('inbox-queue-summary')).toHaveTextContent('2 are waiting on you, 1 of them overdue')
+    // What the section holds is said once, in its heading.
+    expect(screen.getByTestId('inbox-queue-summary')).toHaveTextContent('Waiting on you21 overdue')
   })
 
   test('says it is done when nothing waits and nothing is new', () => {
@@ -175,12 +176,12 @@ describe('InboxQueue — every entry is a link to its real place', () => {
     expect(current[0]).toHaveAttribute('data-item-id', 'news')
   })
 
-  test('the archive control beside an entry puts it away with an undo', () => {
+  test('the archive control beside an entry puts it away with an undo', async () => {
     render(<InboxQueue />)
     fireEvent.click(screen.getAllByTestId('inbox-queue-archive')[0])
     expect(toastMock).toHaveBeenCalledWith('Archived', expect.objectContaining({ action: expect.objectContaining({ label: 'Undo' }) }))
-    // Held for the undo window: gone from the list, the server not told yet.
-    expect(entries().map((entry) => entry.getAttribute('data-item-id'))).not.toContain('late')
+    // Held for the undo window: gone from the list (once it has folded away), the server not told yet.
+    await waitFor(() => expect(entries().map((entry) => entry.getAttribute('data-item-id'))).not.toContain('late'))
     expect(waiting.archive).not.toHaveBeenCalled()
   })
 
@@ -209,7 +210,8 @@ describe('InboxQueue — keys', () => {
     expect(waiting.markRead).toHaveBeenCalledWith(['late'])
     fireEvent.keyDown(window, { key: 'e' })
     expect(toastMock).toHaveBeenCalled()
-    expect(entries()[0]).toHaveAttribute('data-item-id', 'fresh')
+    // The keyboard stays in the list while the archived row folds away.
+    expect(document.activeElement).toHaveAttribute('data-item-id', 'fresh')
   })
 
   test('docked beside a page, the keys are the list’s only while the focus is in it', () => {
@@ -219,5 +221,17 @@ describe('InboxQueue — keys', () => {
     entries()[0].focus()
     fireEvent.keyDown(entries()[0], { key: 'j' })
     expect(entries()[1]).toHaveFocus()
+  })
+
+  test('kept to itself, the keys are the list’s anywhere in the container that declares the scope', () => {
+    render(
+      <aside data-queue-keys="" tabIndex={-1} data-testid="dock">
+        <InboxQueue keyScope="self" />
+      </aside>,
+    )
+    // The dock takes the focus when the reader opens it, or when they click its background.
+    screen.getByTestId('dock').focus()
+    fireEvent.keyDown(screen.getByTestId('dock'), { key: 'j' })
+    expect(entries()[0]).toHaveFocus()
   })
 })

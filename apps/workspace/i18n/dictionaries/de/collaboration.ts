@@ -226,7 +226,7 @@ export const collaboration: typeof en.collaboration = {
     // Das Postfach neben der Seite: schließen, und der Weg zu allen Einträgen.
     dock: {
       close: 'Postfach schließen',
-      all: 'Alle Einträge',
+      all: 'Alle Einträge und Archiv',
     },
     navLabel: 'Postfach',
     badgeAria:
@@ -283,8 +283,7 @@ export const collaboration: typeof en.collaboration = {
     queue: {
       waiting: 'Wartet auf Sie',
       news: 'Neuigkeiten',
-      summary: '{count, plural, one {# wartet auf Sie} other {# warten auf Sie}}',
-      late: '{count} davon überfällig',
+      late: '{count} überfällig',
       nothingWaiting: 'Nichts wartet auf Sie.',
       newsRead: 'Als gelesen markieren',
       chat: 'Chat',
@@ -328,7 +327,7 @@ export const collaboration: typeof en.collaboration = {
     empty: {
       needsMeTitle: 'Alles erledigt',
       needsMeDescription:
-        'Was neu ist oder auf Sie wartet, erscheint hier. Was Sie schon gelesen haben, finden Sie unter „Alle“.',
+        'Neues erscheint hier, sobald es da ist.',
       allTitle: 'Ihr Postfach ist leer',
       allDescription: 'Neuigkeiten aus Ihrem Team und von {productName} erscheinen hier.',
       archivedTitle: 'Nichts archiviert',

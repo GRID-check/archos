@@ -552,7 +552,7 @@ function RailNavItem({
             : 'text-muted-foreground hover:bg-accent hover:text-muted-foreground'
         )}
       >
-        <Link href={href} aria-current={active ? 'page' : undefined} aria-expanded={door?.open} data-tour={tourAnchor} onClick={door?.onClick}>
+        <Link href={href} aria-current={active ? 'page' : undefined} aria-expanded={door?.open} data-dock-door={door?.panel} data-tour={tourAnchor} onClick={door?.onClick}>
           {active && (
             <motion.span
               layoutId={pillId}

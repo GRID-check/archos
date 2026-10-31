@@ -1,0 +1,8 @@
+---
+improvements:
+  - >
+    The docked inbox is calmer. Entries are no longer boxed into cards, the heading says once how many wait and how many are overdue, and a finished inbox shows a quiet check instead of an empty frame.
+  - >
+    Opening the inbox from the bell puts the keyboard in it, so j and k work right away; Escape closes it and returns you to the bell.
+  - >
+    The inbox moves: it slides in when you open it, an archived entry folds away instead of vanishing, and the bell's count settles in when something new arrives.

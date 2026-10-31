@@ -49,7 +49,8 @@ describe('InboxBadge', () => {
 
   test('accepts positioning overrides so the collapsed rail can place it', () => {
     render(<InboxBadge pending={2} className="absolute -top-1 -right-1" />)
-    expect(screen.getByTestId('inbox-badge')).toHaveClass('absolute')
+    // On the frame that carries its arrival, so the pill and its motion move as one.
+    expect(screen.getByTestId('inbox-badge').parentElement).toHaveClass('absolute')
   })
 
   test('renders through the CountPill primitive, in its attention tone', () => {

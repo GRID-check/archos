@@ -236,7 +236,7 @@ describe('InboxList — states', () => {
     render(<InboxList />)
 
     expect(screen.getByText('All caught up')).toBeInTheDocument()
-    expect(screen.getByText('What is new or waiting on you appears here. What you have already read is under “All”.')).toBeInTheDocument()
+    expect(screen.getByText('Anything new shows up here as it arrives.')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'All' }))
     expect(screen.getByText('Your inbox is empty')).toBeInTheDocument()

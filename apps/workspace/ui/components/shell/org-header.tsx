@@ -188,6 +188,7 @@ function OrgHeaderIconLink({
           aria-label={label}
           aria-current={active ? 'page' : undefined}
           aria-expanded={door?.open}
+          data-dock-door={door?.panel}
           onClick={door?.onClick}
           data-tour={tourAnchor}
           className={cn(
