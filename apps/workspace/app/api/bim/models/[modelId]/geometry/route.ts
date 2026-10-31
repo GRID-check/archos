@@ -1,5 +1,5 @@
 /**
- * BIM geometry API — one geometry operation on one model (ADR-0149): element boxes, boxes per
+ * BIM geometry API, the gateway to the geometry service's MCP tools (ADR-0149): element boxes, boxes per
  * group, what lies within a region or near an element, what is in a room, what touches an
  * element, clashes, and how boxes moved against another revision. Thin handler; access and the
  * call to the geometry service live in `@/lib/bim/geometry-service`.

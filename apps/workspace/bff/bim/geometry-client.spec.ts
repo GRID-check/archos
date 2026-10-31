@@ -7,7 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import { createHmac } from 'node:crypto'
-import { callGeometry, GeometryServiceError, geometryError, SOURCES_HEADER, SOURCES_SIG_HEADER } from './geometry-client'
+import {
+  callGeometry,
+  GeometryServiceError,
+  geometryError,
+  SOURCES_HEADER,
+  SOURCES_SIG_HEADER,
+  toolAnswer,
+  toolCall,
+} from './geometry-client'
 
 const MODEL = '11111111-1111-4111-8111-111111111111'
 const SOURCE = { url: 'http://store.internal/m', etag: 'e1', bytes: 10, updatedAt: '2026-10-01T00:00:00.000Z' }
@@ -26,18 +34,27 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+/** A `tools/call` answer as the service's MCP endpoint gives it. */
+const mcp = (structured: unknown, isError = false) => ({ jsonrpc: '2.0', id: 1, result: { structuredContent: structured, isError } })
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
 describe('callGeometry', () => {
   it('posts the operation with the token and a signed envelope, and refuses redirects', async () => {
-    fetchMock.mockResolvedValue(json(200, { op: 'warm', result: { status: 'warming' }, meta: { cacheTier: 'cold', ms: 1, elements: 0, truncated: false } }))
+    fetchMock.mockResolvedValue(
+      json(200, mcp({ op: 'warm', result: { status: 'warming' }, meta: { cacheTier: 'cold', ms: 1, elements: 0, truncated: false } }))
+    )
     const answer = await callGeometry(MODEL, { op: 'warm' }, { ...caller, traceId: 'd'.repeat(32) })
     expect(answer.result).toEqual({ status: 'warming' })
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }]
-    expect(url).toBe('http://geometry:8100/v1/internal/bim/geometry')
+    expect(url).toBe('http://geometry:8100/mcp/')
     expect(init.redirect).toBe('error')
     expect(init.signal).toBeInstanceOf(AbortSignal)
-    expect(JSON.parse(String(init.body))).toEqual({ modelId: MODEL, operation: { op: 'warm' } })
+    expect(JSON.parse(String(init.body))).toEqual({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'warm', arguments: { modelId: MODEL } },
+    })
     expect(init.headers['x-trace-id']).toBe('d'.repeat(32))
     expect(init.headers['x-internal-token']).toBe('test-token')
     const envelope = JSON.parse(Buffer.from(init.headers['X-Request-Context'] as string, 'base64url').toString())
@@ -77,9 +94,27 @@ describe('callGeometry', () => {
     await expect(callGeometry(MODEL, { op: 'warm' }, caller)).rejects.toMatchObject({ status: 502 })
   })
 
-  it('maps a refusal through geometryError', async () => {
-    fetchMock.mockResolvedValue(json(409, { code: 'geometry_warming', retryAfter: 7 }))
+  it('maps an error result through geometryError, by the status it carries', async () => {
+    fetchMock.mockResolvedValue(json(200, mcp({ status: 409, code: 'geometry_warming', retryAfter: 7 }, true)))
     await expect(callGeometry(MODEL, { op: 'warm' }, caller)).rejects.toMatchObject({ status: 409, code: 'geometry_warming', retryAfter: 7 })
+  })
+})
+
+describe('toolCall and toolAnswer', () => {
+  it('names the tool by the op and passes the rest as arguments', () => {
+    expect(toolCall(MODEL, { op: 'near', globalId: 'g'.repeat(22), radius: 2 })).toMatchObject({
+      method: 'tools/call',
+      params: { name: 'near', arguments: { modelId: MODEL, globalId: 'g'.repeat(22), radius: 2 } },
+    })
+  })
+
+  it('refuses an answer that is not a tool result', () => {
+    expect(() => toolAnswer({ jsonrpc: '2.0', id: 1, error: { code: -32601 } })).toThrow(GeometryServiceError)
+  })
+
+  it('maps a refusal before MCP (no token) like an HTTP status', async () => {
+    fetchMock.mockResolvedValue(json(403, { code: 'forbidden' }))
+    await expect(callGeometry(MODEL, { op: 'warm' }, caller)).rejects.toMatchObject({ status: 503, code: 'geometry_unavailable' })
   })
 })
 

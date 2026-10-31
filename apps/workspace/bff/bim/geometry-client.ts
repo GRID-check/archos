@@ -1,11 +1,11 @@
 /**
- * The typed client of the geometry service (`apps/geometry`, ADR-0149): one operation on one
- * model, for the person `session` names.
+ * The BFF's client of the geometry service's MCP server (`apps/geometry`, ADR-0149): one `tools/call`
+ * of the tool named by the operation, for the person `session` names.
  *
- * The BFF is the service's only caller, and it decides access first (`geometry-service.ts`, the
- * model's document read gate). The service holds no access rules of its own: it takes the internal
- * token, which says the caller is the BFF, and the signed request-context envelope, which says who
- * asked and in which organization and project, and resolves the model with exactly that scope.
+ * The BFF is the service's gateway and only caller, and it decides all access first
+ * (`geometry-service.ts`). The service decides none: it takes the internal token (the caller is the
+ * BFF), the envelope (whom the work is for) and the already-authorized sources, whose signature is
+ * input integrity, so it fetches nothing else.
  *
  * Shaped like `bff/ris/document.ts`: `redirect: 'error'` (a redirect would replay the token at
  * whatever host the response names), a timeout, and the service's statuses mapped to one error
@@ -185,17 +185,18 @@ export async function callGeometry(
 
   let response: Response
   try {
-    response = await fetch(`${base}/v1/internal/bim/geometry`, {
+    response = await fetch(`${base}${GEOMETRY_MCP_PATH}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        accept: 'application/json',
+        // Streamable HTTP: the client accepts both; the service answers stateless calls as JSON.
+        accept: 'application/json, text/event-stream',
         ...(caller.traceId ? { 'x-trace-id': caller.traceId } : {}),
         ...envelope,
         ...signedSources,
         ...tokenHeaders,
       },
-      body: JSON.stringify({ modelId, operation }),
+      body: JSON.stringify(toolCall(modelId, operation)),
       cache: 'no-store',
       redirect: 'error',
       signal: AbortSignal.timeout(GEOMETRY_TIMEOUT_MS),
@@ -207,9 +208,35 @@ export async function callGeometry(
       : new GeometryServiceError('The geometry service is not reachable right now', 502, 'geometry_unavailable')
   }
   const body: unknown = await response.json().catch(() => null)
+  // Refused before MCP (the internal token): an HTTP status, mapped like any other.
   if (!response.ok) throw geometryError(response.status, body)
-  if (!isRecord(body) || !isRecord(body.result) || !isRecord(body.meta)) {
+  return toolAnswer(body)
+}
+
+/** The service's MCP endpoint: streamable HTTP, stateless, one JSON-RPC request per call. */
+export const GEOMETRY_MCP_PATH = '/mcp/'
+
+/** The `tools/call` request for one operation: the tool is the op, the arguments the rest plus `modelId`. Pure. */
+export function toolCall(modelId: string, operation: GeometryRequest): Record<string, unknown> {
+  const { op, ...rest } = operation
+  return { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: op, arguments: { modelId, ...rest } } }
+}
+
+/**
+ * A `tools/call` answer as the gateway's: the result's `structuredContent` (`{op, result, meta}`),
+ * or, for an error result, its `{status, code, error, retryAfter?}` mapped like an HTTP refusal. Pure.
+ */
+export function toolAnswer(body: unknown): GeometryResponse {
+  const result = isRecord(body) && isRecord(body.result) ? body.result : null
+  const structured = result && isRecord(result.structuredContent) ? result.structuredContent : null
+  if (!structured) {
     throw new GeometryServiceError('The geometry service answered an unexpected body', 502, 'geometry_unavailable')
   }
-  return body as unknown as GeometryResponse
+  if (result?.isError === true) {
+    throw geometryError(typeof structured.status === 'number' ? structured.status : 502, structured)
+  }
+  if (!isRecord(structured.result) || !isRecord(structured.meta)) {
+    throw new GeometryServiceError('The geometry service answered an unexpected body', 502, 'geometry_unavailable')
+  }
+  return structured as unknown as GeometryResponse
 }
