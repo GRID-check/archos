@@ -178,10 +178,8 @@ archive back field by field. On 2026-10-30 a file built from `Ifc4_SampleHouse.i
 read back by IfcOpenShell's `bcf-client`, an independent reader: version, types,
 statuses, assignee, due date, camera, six planes, selection and comments. Loading in
 ARCHICAD's BCF manager and BIMcollab Zoom is **unverified**; that file is the test.
-The model's marks panel downloads it (open or all). Open: the import (F6),
-`DocumentReferences`.
-Open: no button in the viewer yet (agents and a direct GET reach it),
-`DocumentReferences`. The import is F6's first part (below).
+The model's marks panel downloads it (open or all). Open: `DocumentReferences`.
+The import is F6's first part (below).
 
 ### F4 status: framing core exists, bounding-box source missing
 
@@ -237,8 +235,8 @@ is inflated (no two members may share bytes, so one compressed run cannot be
 named sixteen times); a member inflates only when a topic names it, through
 fflate's streaming `Inflate` counted against its declared size; paths, members
 (2,500) and bytes (64 MiB packed, 64 MiB declared in all, 4 MiB an XML part, a
-picture past 1.5 MB skipped on its declared size) are bounded (`bcf-archive.ts`); the XML is parsed by `saxes`,
-which resolves no DTD and no entity beyond XML's five, and a `<!DOCTYPE>` is
+picture past 1.5 MB skipped on its declared size) are bounded (`bcf-archive.ts`);
+the XML is parsed by `saxes`, which resolves no DTD and no entity beyond XML's five, and a `<!DOCTYPE>` is
 refused outright (`bcf-xml.ts`). A `DueDate` is the day it is in the office's
 time zone (one without an offset read as UTC); a camera whose aspect ratio or
 field of view strays is clamped and noted. Each Zuständige gets one

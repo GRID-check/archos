@@ -65,11 +65,10 @@ function MarkList({ marks }: { marks: ModelMarks }): JSX.Element {
   const rows = review.listed.filter((annotation) => annotation.anchor === 'viewpoint')
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-1">
-      <div className="flex flex-1 gap-1" role="group" aria-label={files('review.filter')}>
       {review.canAnnotate && marks.documentId && <ModelMarksImport documentId={marks.documentId} onImported={review.retry} />}
-      <div className="flex gap-1" role="group" aria-label={files('review.filter')}>
-        {(['open', 'closed'] as const).map((filter) => (
+      <div className="flex items-center gap-1">
+        <div className="flex flex-1 gap-1" role="group" aria-label={files('review.filter')}>
+          {(['open', 'closed'] as const).map((filter) => (
           <Button
             key={filter}
             type="button"

@@ -213,6 +213,8 @@ const MARK: AnnotationRecord = {
   anchorLostAt: null,
   anchorKind: 'viewpoint',
   viewpointId: 'vp_1',
+  sourceTopicGuid: null,
+  importBatchId: null,
   revisionNumber: 3,
   replies: [],
 }

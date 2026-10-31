@@ -67,7 +67,7 @@ describe('an import’s hand-over row', () => {
   })
 
   it('leaves every other write alone', async () => {
-    await resolveInboxItemsAnchoredOn({ ...settle, types: ['piloti.asks_you'] })
+    await resolveInboxItemsAnchoredOn({ ...settle, types: ['annotation.mentioned'] })
     expect(standingFoldedRows).not.toHaveBeenCalled()
     expect(resolveInInbox).toHaveBeenCalledTimes(1)
   })

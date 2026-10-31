@@ -182,6 +182,10 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'One Anmerkung of a document the service read through `getAccessibleDocument` first.',
   'lib/annotations/repository.ts#findDocumentAnnotation|documentVersions':
     'The Fassung number it was set on, of that same document.',
+  'lib/annotations/import-repository.ts#importedTopicGuids|documentAnnotations':
+    'The topics a model already carries, after `importAnnotationsBcf` read the document for writing (`getAccessibleDocument`).',
+  'lib/annotations/import-repository.ts#openImportedMarksOf|documentAnnotations':
+    "An import's hand-over row moving to its recipient's next open mark (`import-rows.ts`): keyed by the row's own document, ids and a quote into that person's row, which the inbox's read redacts unless they may open it (`viewInboxItemAs`).",
   'lib/annotations/numbering.ts#allocateNumbers|documentAnnotations':
     "The next number and the count, under the insert's lock, for a document the service read for writing: a mark set (`insertDocumentAnnotations`, `insertViewpointMark`) or carried onto the replacing document (`carryAnnotationToDocument`, migration 0151, whose service read both documents for writing first).",
   'lib/annotations/viewpoint-carry-repository.ts#versionNumberOf|documentVersions':

@@ -157,6 +157,12 @@ export const SURFACE_CAPABILITIES = {
     canvas: { component: `${REVIEW}/review-export-menu.tsx` },
     chat: { exempt: 'A file download for a person; the door offers it to agents, the chat has no card for a file of marks' },
   },
+  importMarks: {
+    summary: 'Import a coordination BCF file onto a model as marks',
+    operations: ['document-annotations-bcf-import'],
+    canvas: { component: 'features/bim/components/model-marks-import.tsx' },
+    chat: { exempt: 'A file a person picks in the model viewer; the door offers it to agents, and its report is text' },
+  },
   room: {
     summary: 'See who has the document open, on which page, and what they select',
     tool: 'canvas__room',

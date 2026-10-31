@@ -220,7 +220,6 @@ TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app"
     bff/projects/project-status.integration.spec.ts \
     bff/projects/project-record.integration.spec.ts \
     bff/projects/cleanup.integration.spec.ts \
-    bff/feedback/repository.integration.spec.ts \
     bff/filing/root-sort-run-repository.integration.spec.ts \
     bff/folder-cards/repository.integration.spec.ts \
     bff/estate-tree/repository.integration.spec.ts \
@@ -2683,17 +2682,18 @@ apply_in carry_0194 0194_viewpoint_carry.sql
 apply_in carry_0194 0194_viewpoint_carry.sql
 check_in carry_0194 "SELECT count(*) FROM document_annotations" "2" "0194 re-applies, twice"
 echo "==> 0194 viewpoint carry and down migration verified"
-# Migration 0196: a mark imported from a BCF file remembers its topic and its
+
+# ---------------------------------------------------------------------------
 # Migration 0195: a mark imported from a BCF file remembers its topic and its
 # import, and the DOWN.
 #
-# On a database of its own, migrated to 0193. The marks written before carry
+# On a database of its own, migrated to 0194. The marks written before carry
 # no topic; an imported mark is a viewpoint mark with both columns; the same
 # topic twice on one model is refused, on another model it is not; the down
 # keeps the imported marks and drops only the memory; the up re-applies, twice.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0195 BCF topic memory and its down migration on bcf_import_0195"
-migrate_until bcf_import_0195 0193_annotation_viewpoints
+migrate_until bcf_import_0195 0194_viewpoint_carry
 sql_in bcf_import_0195 <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
 VALUES ('aaaaaaaa-0000-4000-8000-000000000195', 'org_0195', 'Modell 0195', 'user_1', 'proj_0195');

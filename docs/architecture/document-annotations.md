@@ -754,8 +754,9 @@ same in any viewer; the viewer converts to and from its own frame
   and every „new since“ reading stay true to when it arrived here, and the
   thread says „über BCF-Import von …, im Original vom …“ under it (Piloti's
   list says it too). A topic closed in the file arrives closed by the importer.
-  Each Zuständige gets one counted inbox row per import, not one per mark. `source_topic_guid` (unique per
-  document) and `import_batch_id` (migration 0195) make a second import skip
+  Each Zuständige gets one inbox row per import, not one per mark.
+  `source_topic_guid` (unique per document) and `import_batch_id` (migration
+  0195) make a second import skip
   what is there and give a later triage its batch. The archive is read with
   every bound checked and the XML without ever resolving a DTD or an entity
   (`bff/bim/bcf-archive.ts`, `bcf-xml.ts`, `bcf-read.ts`, mapping in
@@ -763,8 +764,6 @@ same in any viewer; the viewer converts to and from its own frame
   viewpoint is skipped and reported for now. The trail: the audit event
   `document.annotations.imported` and the product event `annotations_imported`,
   counts only.
-- **No carry.** A viewpoint mark is not carried to a newer Fassung: its
-  referent is a view, not a sheet.
 
 ### Mentioning a colleague
 

@@ -474,12 +474,15 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Import a BCF file onto a model as annotations',
     description:
-      'Makes each topic with a viewpoint of a BCF 2.1 or 3.0 file (.bcf, .bcfzip) an annotation on this IFC model; topics ' +
-      'already on it are skipped. Returns imported, skipped and failed topics with reasons, and the batch id.',
+      'Each topic with a viewpoint of a BCF 2.1/3.0 file (.bcf) becomes an annotation; topics already there are skipped. ' +
+      'Reports each topic and the batch id.',
     method: 'POST',
     path: '/api/documents/[id]/annotations/bcf',
     params: documentParams,
-    body: z.object({ files: z.array(uploadFileSchema).length(1).describe('The BCF file, up to 32 MiB.') }),
+    // The upload's file, lean: no media type (the bytes decide what a BCF file is), a name the route checks for .bcf.
+    body: z.object({
+      files: z.array(z.object({ name: z.string().min(1).max(255), contentBase64: uploadFileSchema.shape.contentBase64 })).length(1),
+    }),
     bodyEncoding: 'multipart',
     idempotent: true,
     load: () => import('@/app/api/documents/[id]/annotations/bcf/route'),
