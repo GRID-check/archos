@@ -18,3 +18,7 @@ export const bcf3QuerySchema = z.object({
 export type Bcf3Query = z.output<typeof bcf3QuerySchema>
 
 export const BCF3_MEDIA_TYPE = 'application/octet-stream'
+
+/** Where the viewer downloads a model's Anmerkungen as BCF 3.0: the route above, with the scope the person picked. */
+export const bcf3ExportHref = (documentId: string, scope: Bcf3Query['scope']): string =>
+  `/api/documents/${encodeURIComponent(documentId)}/annotations/bcf?${new URLSearchParams({ scope }).toString()}`

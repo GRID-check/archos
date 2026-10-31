@@ -14,13 +14,16 @@ export const MAX_PINNED_MARKS = 100
  *
  * A mark in a list carries only a short summary; the camera, the cut and the
  * pin are `GET …/viewpoint`. A viewpoint never changes once set (migration
- * 0193), so a read is kept for the life of the stage and never read again.
+ * 0193), so a read is kept for the life of the stage; only a carry puts a mark
+ * on a new one (0195), and `forget` drops what was kept for it.
  * `want` names the marks whose pins are drawn; `read` fetches one now (a jump).
  */
 export function useMarkViewpoints(documentId: string | null, want: readonly string[]) {
   const [viewpoints, setViewpoints] = useState<ReadonlyMap<string, ViewpointView>>(new Map())
   const kept = useRef(new Map<string, ViewpointView>())
   const asked = useRef(new Set<string>())
+  /** Bumped by `forget`, so a pin of a carried mark is read again. */
+  const [generation, setGeneration] = useState(0)
 
   // A stage opened on another model starts from nothing: ids are per document.
   useEffect(() => {
@@ -48,7 +51,7 @@ export function useMarkViewpoints(documentId: string | null, want: readonly stri
     }).then(() => {
       if (kept.current === map) setViewpoints(new Map(map))
     })
-  }, [documentId, key])
+  }, [documentId, key, generation])
 
   const read = useCallback(
     async (annotationId: string): Promise<ViewpointView> => {
@@ -63,5 +66,13 @@ export function useMarkViewpoints(documentId: string | null, want: readonly stri
     [documentId]
   )
 
-  return { viewpoints, read }
+  /** A carry put the mark on a new viewpoint: read it again when it is next wanted. */
+  const forget = useCallback((annotationId: string) => {
+    kept.current.delete(annotationId)
+    asked.current.delete(annotationId)
+    setViewpoints(new Map(kept.current))
+    setGeneration((value) => value + 1)
+  }, [])
+
+  return { viewpoints, read, forget }
 }

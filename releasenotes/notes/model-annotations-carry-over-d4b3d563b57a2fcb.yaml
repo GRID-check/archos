@@ -1,0 +1,6 @@
+---
+features:
+  - >
+    Annotations on a 3D model now carry over to its newer version: each shows how many of its
+    elements the new version still has, and one click moves its view there. The model's
+    annotations can also be downloaded as a BCF 3.0 file from the annotations panel.

@@ -151,8 +151,8 @@ export const SURFACE_CAPABILITIES = {
   },
   exportMarks: {
     summary: 'Export a document’s or a project’s marks as a file',
-    // The BCF 3.0 file of a model's marks is the same capability in a BIM tool's format; the viewer has
-    // no button for it yet (docs/roadmap/model-collaboration.md, F3), the door and a direct GET reach it.
+    // The BCF 3.0 file of a model's marks is the same capability in a BIM tool's format; the viewer's
+    // marks panel downloads it (`ui/features/bim/components/model-marks-actions.tsx`).
     operations: ['document-annotations-export', 'document-annotations-bcf-export', 'project-annotations-export'],
     canvas: { component: `${REVIEW}/review-export-menu.tsx` },
     chat: { exempt: 'A file download for a person; the door offers it to agents, the chat has no card for a file of marks' },

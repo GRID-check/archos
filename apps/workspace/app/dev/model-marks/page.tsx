@@ -101,6 +101,21 @@ const MARKS: AnnotationView[] = [
     status: 'open',
     body: 'Ist die Brüstungshöhe im Schnitt richtig dargestellt?',
     viewpoint: { id: 'vp-2', cameraKind: 'orthographic', selectionCount: 0, hasSection: false, hasSnapshot: false },
+    // Set on Fassung 3; the model is at Fassung 4 now: the count and „übernehmen“ (migration 0195).
+    revisionNumber: 3,
+    onCurrentRevision: false,
+    carryTarget: { documentId: DOCUMENT_ID, documentName: 'Tragwerk.ifc', revisionNumber: 4, elements: { present: 3, total: 3 } },
+  },
+  {
+    ...base,
+    id: 'mark-4',
+    number: 4,
+    kind: 'defect',
+    status: 'open',
+    body: 'Durchbruch in der Decke fehlt.',
+    // None of its elements was left in Fassung 4: it keeps its last view.
+    anchorLost: true,
+    viewpoint: { id: 'vp-4', cameraKind: 'perspective', selectionCount: 1, hasSection: false, hasSnapshot: false },
   },
   {
     ...base,

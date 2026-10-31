@@ -27,6 +27,7 @@ export type MarksNotice =
   | { kind: 'planes'; count: number }
   | { kind: 'captureFailed' }
   | { kind: 'jumpFailed' }
+  | { kind: 'carryFailed' }
   | { kind: 'cut'; notices: CaptureNotices }
 
 /** The wire's input for a stored viewpoint: `GET` says `pin: null` where the request says nothing. */
@@ -83,7 +84,7 @@ export function useModelMarks(controller: ModelMarksStage) {
   const marks = useMemo(() => review.annotations.filter(isViewpointMark), [review.annotations])
   const pinned = useMemo(() => marks.filter(isLive).slice(0, MAX_PINNED_MARKS), [marks])
   const wanted = useMemo(() => pinned.map((mark) => mark.id), [pinned])
-  const { viewpoints, read } = useMarkViewpoints(documentId, wanted)
+  const { viewpoints, read, forget } = useMarkViewpoints(documentId, wanted)
 
   const pins = useMemo(
     () =>
@@ -146,6 +147,24 @@ export function useModelMarks(controller: ModelMarksStage) {
       )
     },
     [elementList, setView, viewport.camera, viewport.visibility]
+  )
+
+  /**
+   * „übernehmen": the mark goes on with the model's current Fassung, through the review's own carry (one PATCH,
+   * `carryToCurrent`). Its view is new then, or kept when none of its elements is left, so its pin is read again.
+   */
+  const carry = useCallback(
+    async (annotation: AnnotationView) => {
+      setNotice(null)
+      try {
+        await review.carry(annotation)
+        forget(annotation.id)
+      } catch {
+        // A colleague's move first is the review's own conflict notice; anything else is said here.
+        setNotice({ kind: 'carryFailed' })
+      }
+    },
+    [review, forget]
   )
 
   /** Take the view of the live renderer and open the composer on it (`onViewpoint`). */
@@ -240,6 +259,7 @@ export function useModelMarks(controller: ModelMarksStage) {
     openMark,
     jump,
     canJump,
+    carry,
     notice,
     dismissNotice: () => setNotice(null),
     bridge,

@@ -11,6 +11,7 @@ import { filesCopy } from '@/i18n/namespaces/files'
 import { annotationSnapshotHref } from '@/lib/annotations/client'
 import type { AnnotationView } from '@/lib/annotations/types'
 import type { MarksNotice, ModelMarks } from '../hooks/use-model-marks'
+import { ModelMarkCarry, ModelMarksExport } from './model-marks-actions'
 import { ViewerSurface } from './viewer'
 
 /** One sentence per thing worth saying after a capture or a jump; null says nothing. */
@@ -25,6 +26,8 @@ function noticeLines(notice: MarksNotice | null): { key: string; values?: Record
       return [{ key: 'marks.notice.captureFailed' }]
     case 'jumpFailed':
       return [{ key: 'marks.notice.jumpFailed' }]
+    case 'carryFailed':
+      return [{ key: 'marks.notice.carryFailed' }]
     case 'cut':
       return [
         ...(notice.notices.selectionCut ? [{ key: 'marks.notice.selectionCut' }] : []),
@@ -59,7 +62,8 @@ function MarkList({ marks }: { marks: ModelMarks }): JSX.Element {
   const rows = review.listed.filter((annotation) => annotation.anchor === 'viewpoint')
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-1" role="group" aria-label={files('review.filter')}>
+      <div className="flex items-center gap-1">
+      <div className="flex flex-1 gap-1" role="group" aria-label={files('review.filter')}>
         {(['open', 'closed'] as const).map((filter) => (
           <Button
             key={filter}
@@ -74,6 +78,8 @@ function MarkList({ marks }: { marks: ModelMarks }): JSX.Element {
             <span className="text-muted-foreground tabular-nums">{review.counts[filter]}</span>
           </Button>
         ))}
+      </div>
+      {marks.documentId && <ModelMarksExport documentId={marks.documentId} />}
       </div>
       {rows.length === 0 ? (
         <div className="px-1 py-3" data-testid="marks-empty">
@@ -95,7 +101,8 @@ function MarkList({ marks }: { marks: ModelMarks }): JSX.Element {
               >
                 <MarkRowContent annotation={annotation} viewerId={review.me} unread={review.unread.has(annotation.id)} />
               </button>
-              <div className="pl-11">
+              <div className="flex flex-col gap-1.5 pl-11">
+                <ModelMarkCarry marks={marks} annotation={annotation} />
                 <JumpButton marks={marks} annotation={annotation} />
               </div>
             </li>
@@ -128,6 +135,7 @@ function OpenMark({ marks, annotation }: { marks: ModelMarks; annotation: Annota
           data-testid="mark-snapshot"
         />
       )}
+      <ModelMarkCarry marks={marks} annotation={annotation} />
       <ThreadCard
         key={annotation.id}
         review={marks.review}

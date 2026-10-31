@@ -615,8 +615,8 @@ export function DraftCard({
  * not drawn), or on a document another one replaced, each with „Auf aktuelle
  * Fassung übernehmen" where the server says this reader's carry goes through
  * (`carryTarget`), named by the document it lands on: the end of the chain of
- * replacements, not the direct successor the notice names; and where a carried
- * mark came from or went on to, linked where the page can open that document.
+ * replacements, not the direct successor the notice names (on a model: `ModelMarkCarry`);
+ * and where a carried mark came from or went on to, linked where the page can open that document.
  */
 function RevisionLines({
   review,
@@ -637,7 +637,7 @@ function RevisionLines({
   const linkTo = (link: { documentId: string; annotationId: string }) =>
     where ? otherReviewHref(where, review.documentId, link) : null
   const lines: JSX.Element[] = []
-  if (earlier || (replacedBy && target)) {
+  if (annotation.anchor !== 'viewpoint' && (earlier || (replacedBy && target))) {
     lines.push(
       <div key="revision" className="flex flex-col gap-1.5" data-testid="thread-earlier">
         <p className="flex items-start gap-1.5">

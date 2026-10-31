@@ -311,3 +311,74 @@ describe('the marks on a model', () => {
     expect(screen.getByTestId('dock-button')).toHaveFocus()
   })
 })
+
+describe('a mark on a model and the model’s newer Fassung', () => {
+  const behind = (patch: Partial<AnnotationView> = {}) =>
+    mark({
+      revisionNumber: 3,
+      onCurrentRevision: false,
+      carryTarget: { documentId: 'doc-model', documentName: 'tragwerk.ifc', revisionNumber: 4, elements: { present: 3, total: 3 } },
+      ...patch,
+    })
+
+  it('says how many of its elements the new Fassung has, and carries it over through the review’s own PATCH', async () => {
+    const { viewpointReads } = serve([behind()])
+    const patched: unknown[] = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request }) => {
+        patched.push(await request.json())
+        return HttpResponse.json({ annotation: mark({ revisionNumber: 4 }) })
+      })
+    )
+    render(<Harness stage={stage()} />)
+    act(() => marks().setOpen(true))
+    expect(await screen.findByTestId('mark-carry-count')).toHaveTextContent('3 von 3 Bauteilen in Fassung 4 vorhanden')
+    await waitFor(() => expect(viewpointReads).toContain(MARK_ID))
+    const before = viewpointReads.length
+
+    await userEvent.click(screen.getByTestId('mark-carry-button'))
+    await waitFor(() => expect(patched).toEqual([{ carryToCurrent: true, expectedStatus: 'open' }]))
+    // Its view is new now: the pin reads it again.
+    await waitFor(() => expect(viewpointReads.length).toBeGreaterThan(before))
+    await waitFor(() => expect(screen.queryByTestId('mark-carry-count')).not.toBeInTheDocument())
+  })
+
+  it('says when none of its elements is left, and that it keeps its last view', async () => {
+    serve([behind({ carryTarget: null, anchorLost: true, onCurrentRevision: true })])
+    render(<Harness stage={stage()} />)
+    act(() => marks().setOpen(true))
+    expect(await screen.findByTestId('mark-carry-lost')).toHaveTextContent('Bauteile nicht mehr im Modell')
+    expect(screen.queryByTestId('mark-carry-button')).not.toBeInTheDocument()
+  })
+
+  it('counts what is missing before anyone clicks', async () => {
+    serve([behind({ carryTarget: { documentId: 'doc-model', documentName: 'tragwerk.ifc', revisionNumber: 4, elements: { present: 0, total: 2 } } })])
+    render(<Harness stage={stage()} />)
+    act(() => marks().setOpen(true))
+    expect(await screen.findByTestId('mark-carry-count')).toHaveTextContent('Keines der 2 Bauteile in Fassung 4 vorhanden')
+  })
+})
+
+describe('the model’s marks as a BCF file', () => {
+  it('downloads the open ones from the export route', async () => {
+    serve([mark()])
+    const asked: string[] = []
+    server.use(
+      http.get('/api/documents/:id/annotations/bcf', ({ request }) => {
+        asked.push(new URL(request.url).pathname + new URL(request.url).search)
+        return new HttpResponse(new Blob(['PK']), {
+          headers: { 'Content-Disposition': 'attachment; filename="Anmerkungen.bcf"' },
+        })
+      })
+    )
+    const { captureDownloads } = await import('@/test-utils/downloads')
+    const downloads = captureDownloads()
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:bcf'), revokeObjectURL: vi.fn() })
+    render(<Harness stage={stage()} />)
+    act(() => marks().setOpen(true))
+    await userEvent.click(await screen.findByTestId('marks-export'))
+    await userEvent.click(await screen.findByTestId('marks-export-open'))
+    await waitFor(() => expect(asked).toEqual(['/api/documents/doc-model/annotations/bcf?scope=open']))
+    await waitFor(() => expect(downloads).toEqual([{ href: 'blob:bcf', download: 'Anmerkungen.bcf' }]))
+  })
+})
