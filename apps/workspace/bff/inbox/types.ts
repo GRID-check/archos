@@ -34,6 +34,13 @@ export interface InboxItemView {
    * never archived again.
    */
   archived: boolean
+  /**
+   * Whether the reader has opened it. Its own fact too: `state` says `resolved`
+   * before it says `read`, so a request someone else answered before the reader
+   * saw it read as done while the badge, which counts unread rows, still counted
+   * it, and the queue showed nothing under a badge of one.
+   */
+  read: boolean
   /** True for items representing an outstanding request against the recipient. */
   actionable: boolean
   resourceType: InboxTargetType

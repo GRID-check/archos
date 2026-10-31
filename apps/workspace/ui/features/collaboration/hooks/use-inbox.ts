@@ -269,7 +269,7 @@ export function useInboxList(
     async (itemIds: string[]) => {
       if (itemIds.length === 0) return
       await optimistic(
-        (item) => ({ ...item, state: item.state === 'unread' ? 'read' : item.state }),
+        (item) => ({ ...item, read: true, state: item.state === 'unread' ? 'read' : item.state }),
         itemIds,
         () => client.markRead(itemIds),
         { itemIds },
@@ -282,7 +282,7 @@ export function useInboxList(
     async (itemIds: string[]) => {
       if (itemIds.length === 0) return
       await optimistic(
-        (item) => ({ ...item, state: item.state === 'read' ? 'unread' : item.state }),
+        (item) => ({ ...item, read: false, state: item.state === 'read' ? 'unread' : item.state }),
         itemIds,
         () => client.markUnread(itemIds),
       )
@@ -292,7 +292,7 @@ export function useInboxList(
 
   const markAllRead = useCallback(async () => {
     await optimistic(
-      (item) => (item.state === 'unread' ? { ...item, state: 'read' } : item),
+      (item) => (item.read ? item : { ...item, read: true, state: item.state === 'unread' ? 'read' : item.state }),
       'all',
       () => client.markAllRead(),
       { all: true },

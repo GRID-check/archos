@@ -14,6 +14,7 @@ function quarantined(overrides: Partial<InboxItemView> = {}): InboxItemView {
     type: 'document.quarantined',
     state: 'unread',
     archived: false,
+    read: false,
     actionable: false,
     resourceType: 'organization',
     resourceId: 'org-1',

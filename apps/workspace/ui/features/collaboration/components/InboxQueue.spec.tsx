@@ -35,6 +35,7 @@ const row = (id: string, overrides: Partial<InboxItemView> = {}): InboxItemView 
   type: 'annotation.assigned_to_you',
   state: 'unread',
   archived: false,
+  read: false,
   actionable: true,
   resourceType: 'document',
   resourceId: 'doc-eg',
@@ -123,6 +124,22 @@ describe('InboxQueue — what waits on the reader, and the news', () => {
     serve([], [])
     render(<InboxQueue />)
     expect(screen.getByText('All caught up')).toBeInTheDocument()
+  })
+
+  test('never says it is done when one of its reads failed', () => {
+    serve([], [])
+    waiting = { ...waiting, error: true }
+    render(<InboxQueue />)
+    expect(screen.queryByText('All caught up')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /retry|try again/i })).toBeInTheDocument()
+  })
+
+  test('shows a request answered before the reader opened it, which the badge counts', () => {
+    const answered = row('answered', { type: 'mention.requested', resourceType: 'conversation', resourceId: 'c9', state: 'resolved', read: false, href: '/app/projects/p1/chat?session=c9' })
+    serve([], [answered])
+    render(<InboxQueue />)
+    expect(screen.queryByText('All caught up')).not.toBeInTheDocument()
+    expect(entries().map((entry) => entry.getAttribute('data-item-id'))).toEqual(['answered'])
   })
 
   test('marks the news read from its section', () => {

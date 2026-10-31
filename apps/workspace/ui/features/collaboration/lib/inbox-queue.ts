@@ -90,9 +90,14 @@ export function waitingGroups(items: readonly InboxItemView[], today: string): I
   return [...groups.values()]
 }
 
-/** What is new and asks nothing: not opened yet, and no open request. Newest first, as the server sent it. */
+/**
+ * What is new and asks nothing: not opened yet, still there, and no open
+ * request. Newest first, as the server sent it. `read`, never `state`: a
+ * request answered before the reader opened it says `resolved` and is still
+ * unread, and the badge counts it.
+ */
 export function newsOf(items: readonly InboxItemView[]): InboxItemView[] {
-  return items.filter((item) => item.state === 'unread' && !isOpenRequest(item))
+  return items.filter((item) => !item.read && item.state !== 'inert' && !item.archived && !isOpenRequest(item))
 }
 
 /** The rows in the order they are drawn: the queue's, then the news. What j/k walks. */

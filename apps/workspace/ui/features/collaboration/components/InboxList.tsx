@@ -187,7 +187,7 @@ export function InboxList({
   // A row waiting out its undo window is already gone as far as the reader can
   // tell; the server hears about it when the window closes.
   const visibleItems = items.filter((item) => !archiveLater.pendingIds.has(item.id))
-  const hasUnread = visibleItems.some((item) => item.state === 'unread')
+  const hasUnread = visibleItems.some((item) => !item.read)
 
   const onArchive = useCallback(
     (itemId: string): void => {
@@ -212,7 +212,7 @@ export function InboxList({
 
   const onOpen = useCallback(
     (item: InboxItemView) => {
-      if (item.state === 'unread') void markRead([item.id])
+      if (!item.read) void markRead([item.id])
     },
     [markRead],
   )
@@ -305,8 +305,8 @@ export function InboxList({
         else setFocusedId(null)
         return
       }
-      if (current.state === 'unread') void markRead([current.id])
-      else if (current.state === 'read') void markUnread([current.id])
+      if (!current.read) void markRead([current.id])
+      else if (current.state !== 'inert') void markUnread([current.id])
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

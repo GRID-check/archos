@@ -103,7 +103,7 @@ export function InboxQueue({ enabled = true, returnHere = true, keyScope = 'page
   const ownerOf = useCallback((item: InboxItemView) => (isOpenRequest(item) ? waiting : fresh), [waiting, fresh])
   const markRead = useCallback(
     (item: InboxItemView) => {
-      if (item.state === 'unread') void ownerOf(item).markRead([item.id])
+      if (!item.read) void ownerOf(item).markRead([item.id])
     },
     [ownerOf],
   )
@@ -144,7 +144,7 @@ export function InboxQueue({ enabled = true, returnHere = true, keyScope = 'page
         archive(item.id)
         return
       }
-      void (item.state === 'unread' ? ownerOf(item).markRead([item.id]) : ownerOf(item).markUnread([item.id]))
+      void (!item.read ? ownerOf(item).markRead([item.id]) : ownerOf(item).markUnread([item.id]))
     },
     [order, archive, ownerOf],
   )
@@ -167,7 +167,9 @@ export function InboxQueue({ enabled = true, returnHere = true, keyScope = 'page
   const late = groups.flatMap((group) => group.items).filter((item) => item.variant === 'overdue').length
   const waitingCount = groups.reduce((sum, group) => sum + group.items.length, 0)
 
-  if (waiting.error && fresh.error) {
+  // Either read failing means the queue cannot say it is done: half a queue
+  // under „Alles erledigt“ is the one answer that must never be wrong.
+  if ((waiting.error || fresh.error) && order.length === 0) {
     return <LoadError title={t('inbox.errors.loadFailed')} onRetry={() => (waiting.refresh(), fresh.refresh())} />
   }
   // Nothing waits and nothing is new: the queue is done, and says so.

@@ -672,9 +672,8 @@ function toItemView(
   const payload: Record<string, unknown> = row.payload ?? {}
   // The delegated task this row is about, when the emitter named one
   // (`task_run.completed` / `task_run.failed` carry `taskId` beside `filedDocumentId`).
-  // Threaded into the href so the row lands on its result; absent falls back
-  // to the target's own page. Attacker-influenced like every other payload
-  // field, so anything that is not a non-empty string becomes absent.
+  // Threaded into the href so the row lands on its result; absent (`nonEmpty`)
+  // falls back to the target's own page.
   const taskId = nonEmpty(payload.taskId)
   // The run's message, when the emitter knew it (`runMessageId` beside
   // `conversationId` and `runId`): the row then lands on the run block itself.
@@ -692,6 +691,7 @@ function toItemView(
     type: canonicalInboxType(row.type) as InboxItemType,
     state: deriveState(row),
     archived: row.archivedAt !== null,
+    read: row.readAt !== null,
     actionable: row.actionable,
     resourceType: row.resourceType,
     resourceId: row.resourceId,

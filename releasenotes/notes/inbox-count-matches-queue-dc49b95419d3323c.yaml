@@ -1,0 +1,4 @@
+---
+fixes:
+  - >
+    The inbox no longer says "All caught up" under a bell that still counts something. A request a colleague answered before you opened it now shows as new until you read it, and when part of the inbox cannot be loaded you see the error and a way to retry.

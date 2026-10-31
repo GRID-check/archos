@@ -87,6 +87,7 @@ const ITEM: InboxItemView = {
   type: 'mention.requested',
   state: 'unread',
   archived: false,
+  read: false,
   actionable: true,
   resourceType: 'conversation',
   resourceId: 'c1',
@@ -323,7 +324,7 @@ describe('InboxList — actions', () => {
   })
 
   test('mark-all-read is disabled while nothing is unread', () => {
-    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'read' }] }))
+    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'read', read: true }] }))
     render(<InboxList />)
     expect(screen.getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
   })
@@ -395,7 +396,7 @@ describe('InboxList — actions', () => {
   })
 
   test('opening an already-read row does not re-mark it', () => {
-    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'read' }] }))
+    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'read', read: true }] }))
     render(<InboxList />)
     fireEvent.click(screen.getByRole('link'))
     expect(markRead).not.toHaveBeenCalled()
@@ -403,7 +404,7 @@ describe('InboxList — actions', () => {
 })
 
 describe('InboxList — keyboard triage', () => {
-  const SECOND: InboxItemView = { ...ITEM, id: 'i2', state: 'read', actorName: 'Markus Hofer', actorUserId: 'u-markus' }
+  const SECOND: InboxItemView = { ...ITEM, id: 'i2', state: 'read', read: true, actorName: 'Markus Hofer', actorUserId: 'u-markus' }
 
   beforeEach(() => {
     toastMock.mockClear()

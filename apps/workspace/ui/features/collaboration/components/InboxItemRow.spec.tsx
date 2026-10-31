@@ -39,6 +39,7 @@ const base: InboxItemView = {
   type: 'mention.requested',
   state: 'unread',
   archived: false,
+  read: false,
   actionable: true,
   resourceType: 'conversation',
   resourceId: 'c1',
@@ -147,7 +148,7 @@ describe('InboxItemRow — registry-driven rendering (IB-6)', () => {
   test('a shared-with-you item renders from the same component, no switch needed', () => {
     render(
       <InboxItemRow
-        item={item({ type: 'conversation.shared_with_you', actionable: false, state: 'read' })}
+        item={item({ type: 'conversation.shared_with_you', actionable: false, state: 'read', read: true })}
       />,
     )
     expect(screen.getByText('Anna Weber shared a conversation with you')).toBeInTheDocument()
@@ -182,7 +183,7 @@ describe('InboxItemRow — registry-driven rendering (IB-6)', () => {
     // sat there with nothing new in it at all. Three cases, not two.
     render(
       <InboxItemRow
-        item={item({ type: 'conversation.activity', actionable: false, state: 'read', count: 0 })}
+        item={item({ type: 'conversation.activity', actionable: false, state: 'read', read: true, count: 0 })}
       />,
     )
     expect(screen.getByText('Messages in “Atrium – Rauchabschnitte”')).toBeInTheDocument()
@@ -214,7 +215,7 @@ describe('InboxItemRow — registry-driven rendering (IB-6)', () => {
   })
 
   test('an answer from nobody in particular says the question was answered, not „Someone replied“', () => {
-    render(<InboxItemRow item={item({ type: 'mention.answered', actionable: false, state: 'read', actorName: null, actorUserId: null })} />)
+    render(<InboxItemRow item={item({ type: 'mention.answered', actionable: false, state: 'read', read: true, actorName: null, actorUserId: null })} />)
     expect(screen.getByText('Your question was answered')).toBeInTheDocument()
     expect(screen.queryByText('Someone replied')).not.toBeInTheDocument()
   })
@@ -227,7 +228,7 @@ describe('InboxItemRow — registry-driven rendering (IB-6)', () => {
     expect(container.innerHTML).not.toContain('before:w-[3px]')
     unmount()
 
-    const { container: read } = render(<InboxItemRow item={item({ state: 'read' })} />)
+    const { container: read } = render(<InboxItemRow item={item({ state: 'read', read: true })} />)
     expect(screen.getByRole('link')).not.toHaveClass('font-medium')
     expect(read.querySelector('[data-slot="attention-dot"]')).toBeNull()
   })
@@ -447,6 +448,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
     versionNumber: 2,
     state: 'in_review',
     archived: false,
+    read: true,
     contentType: 'text/markdown',
     fileSize: 1200,
     contentHash: 'sha256:abc',
@@ -764,6 +766,7 @@ describe('InboxItemRow — a new Fassung (document.new_revision)', () => {
       type: 'document.new_revision',
       state: 'unread',
       archived: false,
+      read: false,
       actionable: false,
       resourceType: 'document',
       resourceId: 'doc-b',
@@ -869,6 +872,7 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
       type: 'piloti.work_done',
       state: 'unread',
       archived: false,
+      read: false,
       actionable: false,
       resourceType: 'document',
       resourceId: 'doc-eg',
@@ -993,6 +997,7 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
       type: 'annotation.assigned_to_you',
       state: 'unread',
       archived: false,
+      read: false,
       actionable: true,
       resourceType: 'document',
       resourceId: 'doc-eg',
@@ -1078,7 +1083,7 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
     expect(screen.getByText('Neue Antwort zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
     piloti.unmount()
 
-    german(onMark({ ...reply, state: 'read', count: 0 }))
+    german(onMark({ ...reply, state: 'read', read: true, count: 0 }))
     expect(screen.getByText('Antworten zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
   })
 
@@ -1133,6 +1138,7 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
       type: 'annotation.assigned_to_you',
       state: 'unread',
       archived: false,
+      read: false,
       actionable: true,
       resourceType: 'document',
       resourceId: 'doc-eg',
@@ -1243,7 +1249,7 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
       expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Marked as resolved. Undo')
       expect(marks.update).not.toHaveBeenCalled()
       // Nothing was written, so the request is still open and the list's re-read keeps the row: „Undo“ stays usable.
-      rerender(<InboxItemRow item={markRow({ state: 'read' })} markClient={marks} />)
+      rerender(<InboxItemRow item={markRow({ state: 'read', read: true })} markClient={marks} />)
       expect(screen.getByTestId('inbox-mark-undo')).toBeEnabled()
       act(() => {
         vi.advanceTimersByTime(ARCHIVE_UNDO_MS - 1)
@@ -1518,7 +1524,7 @@ describe('InboxItemRow — who and what at a glance', () => {
   })
 
   test('a read title steps back in dark mode; an unread one does not', () => {
-    const { unmount } = render(<InboxItemRow item={item({ state: 'read' })} />)
+    const { unmount } = render(<InboxItemRow item={item({ state: 'read', read: true })} />)
     expect(screen.getByTestId('inbox-item-link')).toHaveClass('dark:text-muted-foreground')
     unmount()
     render(<InboxItemRow item={item()} />)
@@ -1571,7 +1577,7 @@ describe('InboxItemRow — the row’s menu', () => {
     expect(onMarkRead).toHaveBeenCalledWith('i1')
     unmount()
 
-    render(<InboxItemRow item={item({ state: 'read' })} onMarkRead={onMarkRead} onMarkUnread={onMarkUnread} />)
+    render(<InboxItemRow item={item({ state: 'read', read: true })} onMarkRead={onMarkRead} onMarkUnread={onMarkUnread} />)
     await user.click(screen.getByRole('button', { name: 'More actions' }))
     await user.click(await screen.findByTestId('inbox-mark-unread'))
     expect(onMarkUnread).toHaveBeenCalledWith('i1')

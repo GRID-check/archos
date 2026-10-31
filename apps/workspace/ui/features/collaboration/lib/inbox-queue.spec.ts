@@ -10,6 +10,7 @@ const row = (id: string, overrides: Partial<InboxItemView> = {}): InboxItemView 
   type: 'annotation.assigned_to_you',
   state: 'unread',
   archived: false,
+  read: false,
   actionable: true,
   resourceType: 'document',
   resourceId: 'doc-eg',
@@ -90,10 +91,19 @@ describe('waitingGroups', () => {
 describe('newsOf and queueOrder', () => {
   it('news is what is unread and asks nothing; j/k walks the queue, then the news', () => {
     const news = row('news', { actionable: false, type: 'annotation.activity' })
-    const read = row('read', { actionable: false, state: 'read' })
+    const read = row('read', { actionable: false, state: 'read', read: true })
     const waiting = row('waiting')
     expect(newsOf([waiting, news, read]).map((item) => item.id)).toEqual(['news'])
     expect(queueOrder(waitingGroups([waiting], TODAY), [news]).map((item) => item.id)).toEqual(['waiting', 'news'])
+  })
+
+  it('a request answered before the reader opened it is news: the badge counts every unread row', () => {
+    // `state` says resolved before it says read; the badge reads `readAt`. Filtering
+    // on `state` once left the badge at one over an empty queue.
+    const answered = row('answered', { state: 'resolved', read: false })
+    const answeredAndRead = row('seen', { state: 'resolved', read: true })
+    const gone = row('gone', { actionable: false, state: 'inert', read: false })
+    expect(newsOf([answered, answeredAndRead, gone]).map((item) => item.id)).toEqual(['answered'])
   })
 })
 

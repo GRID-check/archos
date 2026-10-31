@@ -193,7 +193,7 @@ function WaitingEntry(props: EntryProps): JSX.Element {
   const { title } = inboxItemCopy(item, t, namespaceRoot(collaborationCopy, locale), locale)
   const reason = inboxReason(item, t)
   const due = inboxDue(item, t, locale)
-  const unread = item.state === 'unread'
+  const unread = !item.read
   return (
     <EntryFrame {...props} className="gap-2.5 px-2 py-2">
       <span

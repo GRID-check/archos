@@ -197,7 +197,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       : null
 
   const inert = item.state === 'inert'
-  const unread = item.state === 'unread'
+  const unread = !item.read
   const resolved = item.state === 'resolved'
   // An operational warning is not a REQUEST: nobody is waiting on the reader, so
   // it is not actionable and it does not resolve. Its body is the news (why it
@@ -277,10 +277,10 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       ? [{ type: 'item' as const, id: 'compare', label: t('inbox.compareRevisions'), icon: Layers, href: compareHref, onSelect: () => onOpen?.(item) }]
       : []),
     ...(answerHere || canResolveMark || answerInReview || compareHref ? [{ type: 'separator' as const }] : []),
-    ...(item.state === 'unread' && onMarkRead
+    ...(!item.read && onMarkRead
       ? [{ type: 'item' as const, id: 'read', label: t('inbox.markRead'), icon: MailOpen, onSelect: () => onMarkRead(item.id), testId: 'inbox-mark-read' }]
       : []),
-    ...(item.state === 'read' && onMarkUnread
+    ...(item.read && item.state !== 'inert' && onMarkUnread
       ? [{ type: 'item' as const, id: 'unread', label: t('inbox.markUnread'), icon: Mail, onSelect: () => onMarkUnread(item.id), testId: 'inbox-mark-unread' }]
       : []),
     ...(archived && onUnarchive
