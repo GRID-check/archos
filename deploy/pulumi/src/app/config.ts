@@ -19,6 +19,8 @@ export interface AppWiring {
   seaweedPublicEndpoint: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
+  /** The geometry service's URL (set when cfg.geometry.enabled, ADR-0149): the BFF's `GEOMETRY_SERVICE_URL`. */
+  geometryUrl?: string;
   /** The self-hosted Photon's URL (set when cfg.geocoder.enabled, ADR-0120). */
   geocoderUrl?: pulumi.Output<string>;
   /** The Qdrant cluster's client URL (ADR-0115): the one vector store, so there is no embedded one. */
@@ -638,6 +640,9 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // source it indexes those from (ADR-0071). Absent ⇒ those files are
     // marked failed (retryable); .xlsx/.xlsm index without preview.
     ...(w.gotenbergUrl ? [{ name: "GOTENBERG_URL", value: w.gotenbergUrl }] : []),
+    // The geometry service (ADR-0149), behind `/api/bim/models/<id>/geometry`. The BFF is its only
+    // caller. Absent ⇒ that route answers 503 and nothing else changes.
+    ...(w.geometryUrl ? [{ name: "GEOMETRY_SERVICE_URL", value: w.geometryUrl }] : []),
     // Address search for the project dialog (ADR-0120), behind `/api/geocode`.
     // Absent ⇒ the route answers `enabled: false` and the address stays a plain
     // text field. Only ever the in-cluster Photon: an address is client data.

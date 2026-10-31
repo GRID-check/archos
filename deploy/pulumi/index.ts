@@ -48,6 +48,7 @@ import { LEGACY_API_TIER, LEGACY_CHAT_TIER } from "./src/app/tier-names";
 import { installFrontend } from "./src/app/frontend";
 import { installWeb } from "./src/app/web";
 import { installGotenberg } from "./src/app/gotenberg";
+import { GEOMETRY_URL, installGeometry } from "./src/app/geometry";
 import { installWorkers } from "./src/app/workers";
 import { installAgentWorker } from "./src/app/agent-worker";
 import { installIngestWorker } from "./src/app/ingest-worker";
@@ -212,6 +213,7 @@ const wiring: AppWiring = {
   seaweedPublicEndpoint: seaweed.publicEndpoint,
   gotenbergUrl: gotenberg?.url,
   geocoderUrl: geocoder?.url,
+  geometryUrl: cfg.geometry.enabled ? GEOMETRY_URL : undefined,
   qdrantUrl: qdrant.url,
   dsn: postgres.dsn,
   imagePullSecrets: pullSecret ? [{ name: PULL_SECRET_NAME }] : [],
@@ -221,6 +223,10 @@ const wiring: AppWiring = {
 // rotated credential is a gated rolling update rather than a silent no-op
 // (src/platform/rollout.ts).
 const secrets = buildSecrets(wiring);
+
+// The geometry service (ADR-0149): cluster-internal, called only by the BFF's geometry route.
+// Off by default (`geometryEnabled`); the frontend then gets no GEOMETRY_SERVICE_URL.
+if (cfg.geometry.enabled) installGeometry(wiring, cfg, secrets, [ns]);
 
 // The `app` DB is created at cluster bootstrap; run drizzle migrations before
 // the frontend/workers that read it. The migrations themselves go straight to

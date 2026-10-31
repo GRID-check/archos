@@ -146,9 +146,11 @@ describe("the chat tier's scale-out", () => {
     // Both sides, as source: the route's path, the JSON field it answers, the header it guards on.
     expect(route).toContain(`CHAT_OCCUPANCY_PATH = "${new URL(trigger.metadata.url).pathname}"`);
     expect(route).toContain(`"${trigger.metadata.valueLocation}": active`);
-    expect(read("apps", "agent-host", "src", "agent_host", "routes", "internal_auth.py")).toContain(
+    // The header names live in the shared inbound check (ADR-0149), which agent_host's guard calls.
+    expect(read("packages", "agent", "src", "agent", "common", "envelope_auth.py")).toContain(
       `"${trigger.metadata.keyParamName}"`,
     );
+    expect(read("apps", "agent-host", "src", "agent_host", "routes", "internal_auth.py")).toContain("TOKEN_HEADER");
     expect(trigger.metadata).toMatchObject({ authMode: "apiKey", method: "header" });
   });
 

@@ -27,6 +27,7 @@ import { type FrontendConfig, type WebConfig, loadWebTier } from "./config/web-t
 import {
   type BffJobsConfig,
   type GeocoderConfig,
+  type GeometryConfig,
   type GotenbergConfig,
   type IngestWorkerConfig,
   type KedaConfig,
@@ -170,6 +171,9 @@ export interface DeployConfig {
   };
 
   gotenberg: GotenbergConfig;
+
+  /** The geometry service (ADR-0149, `app/geometry.ts`); the frontend gets `GEOMETRY_SERVICE_URL` exactly when on. */
+  geometry: GeometryConfig;
 
   /**
    * The self-hosted address search (ADR-0120, `data/geocoder.ts`): Photon over

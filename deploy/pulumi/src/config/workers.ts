@@ -27,6 +27,22 @@ export interface GotenbergConfig {
   replicas: number;
 }
 
+export interface GeometryConfig {
+  /**
+   * Run the geometry service (ADR-0149): element boxes, proximity, rooms, clashes and box diffs
+   * over IFC models, behind the BFF's geometry route. OFF by default until a stack sizes it
+   * (`geometryEnabled`); off, the frontend gets no `GEOMETRY_SERVICE_URL` and the route answers 503.
+   */
+  enabled: boolean;
+  replicas: number;
+  /**
+   * A parsed model is resident in the pod (20x to 140x its file size, two at most), so memory is
+   * the sizing question. The service refuses a model it cannot hold (`BIM_SPATIAL_MAX_MODEL_BYTES`,
+   * derived from this limit) rather than being OOM-killed.
+   */
+  resources: ResourceSpec;
+}
+
 export interface GeocoderConfig {
   /**
    * OFF by default: prepared, switched on per stack (`geocoderEnabled`).
@@ -125,7 +141,7 @@ export interface ProviderLimitsConfig {
 
 export function loadWorkers(
   cfg: pulumi.Config,
-): { gotenberg: GotenbergConfig; geocoder: GeocoderConfig; ingestWorker: IngestWorkerConfig; bffJobs: BffJobsConfig; keda: KedaConfig; providerLimits: ProviderLimitsConfig } {
+): { gotenberg: GotenbergConfig; geometry: GeometryConfig; geocoder: GeocoderConfig; ingestWorker: IngestWorkerConfig; bffJobs: BffJobsConfig; keda: KedaConfig; providerLimits: ProviderLimitsConfig } {
   return {
     gotenberg: {
       enabled: bool(cfg, "gotenbergEnabled", true),
@@ -147,6 +163,16 @@ export function loadWorkers(
           ),
         ),
       ),
+    },
+    geometry: {
+      enabled: bool(cfg, "geometryEnabled", false),
+      replicas: positiveInt(cfg, "geometryReplicas", 1),
+      resources: {
+        requestsCpu: cfg.get("geometryRequestsCpu") ?? "500m",
+        requestsMemory: cfg.get("geometryRequestsMemory") ?? "3Gi",
+        limitsCpu: cfg.get("geometryLimitsCpu") ?? "2",
+        limitsMemory: cfg.get("geometryLimitsMemory") ?? "6Gi",
+      },
     },
     geocoder: {
       enabled: bool(cfg, "geocoderEnabled", false),

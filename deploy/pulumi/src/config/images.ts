@@ -8,6 +8,11 @@ export function backendImage(c: { images: ImagesConfig }): string {
   return c.images.backend ?? `${c.images.registry}/grid-oib-backend:${c.images.tag}`;
 }
 
+/** Resolve the concrete geometry-service image reference (`apps/geometry/Dockerfile`, ADR-0149). */
+export function geometryImage(c: { images: ImagesConfig }): string {
+  return c.images.geometry ?? `${c.images.registry}/grid-oib-geometry:${c.images.tag}`;
+}
+
 /** Resolve the concrete frontend image reference. */
 export function frontendImage(c: { images: ImagesConfig }): string {
   return c.images.frontend ?? `${c.images.registry}/grid-oib-frontend:${c.images.tag}`;
@@ -54,6 +59,8 @@ export interface ImagesConfig {
   tag: string;
   /** Full override for the backend image ref (registry+tag ignored if set). */
   backend?: string;
+  /** Full override for the geometry-service image ref. */
+  geometry?: string;
   /** Full override for the frontend image ref. */
   frontend?: string;
   /** Full override for the landing-site (web) image ref. */
@@ -93,6 +100,7 @@ export function loadImages(cfg: pulumi.Config): ImagesConfig {
     registry: cfg.get("imageRegistry") ?? "ghcr.io/archos-at",
     tag: imageTag,
     backend: cfg.get("backendImage"),
+    geometry: cfg.get("geometryImage"),
     frontend: cfg.get("frontendImage"),
     web: cfg.get("webImage"),
     // Explicit escape hatch only; the default is derived per image ref —
